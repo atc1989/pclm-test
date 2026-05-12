@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0C1017">
+<title>GutGuard — Doctor Onboarding</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0C1017;--bl:#3B82C8;--lt:#F3F2EF;--lt2:#E8E6E0;--lt3:#DDDAD2;--w:#FFF;--d1:#1A1A17;--d2:#6B6960;--d3:#9C9A92;--d4:#C0BDB5;--grn:#5CB882;--ter:#CC6E48;--red:#D42020;--f:'Outfit',system-ui,sans-serif;--ease:cubic-bezier(.32,1,.68,1)}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-font-smoothing:antialiased;height:100%}
+body{font-family:var(--f);background:var(--bg);color:#fff;min-height:100%;margin:0}
+button{font-family:var(--f);cursor:pointer;-webkit-tap-highlight-color:transparent}
+@media(min-width:540px){body{background:#060A10}.wrap{max-width:480px;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.25);overflow-x:hidden;min-height:100vh}}
+.S{display:none;opacity:0;background:var(--lt)}.S.on{display:block;opacity:1;min-height:100vh}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.an{animation:up .4s var(--ease) both}
+.d1{animation-delay:.06s}.d2{animation-delay:.12s}.d3{animation-delay:.20s}.d4{animation-delay:.28s}.d5{animation-delay:.36s}
+.btn-p{width:100%;padding:18px 0;border-radius:16px;border:none;font-size:16px;font-weight:700;background:var(--bl);color:#fff;min-height:58px;cursor:pointer}.btn-p:active{transform:scale(.97)}
+.btn-o{width:100%;padding:16px 0;border-radius:16px;border:1.5px solid var(--lt3);font-size:15px;font-weight:600;background:var(--w);color:var(--d2);min-height:52px;cursor:pointer;margin-top:10px;font-family:var(--f)}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;position:sticky;top:0;z-index:10;background:rgba(243,242,239,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.nav-bk{background:none;border:none;color:var(--d3);font-size:15px;font-weight:600;padding:10px 14px;font-family:var(--f);cursor:pointer}
+.prog{height:3px;background:var(--lt2);margin:0 28px}.prog-fill{height:100%;border-radius:2px;background:var(--bl);transition:width .4s var(--ease)}
+.fg{margin-bottom:18px}.fg label{display:block;font-size:14px;font-weight:600;color:var(--d2);margin-bottom:6px}.fg .rq{color:var(--red)}
+.fg input{width:100%;padding:16px 18px;border:1.5px solid var(--lt3);border-radius:14px;font-family:var(--f);font-size:16px;color:var(--d1);background:var(--w);min-height:54px;outline:none;transition:border-color .12s}
+.fg input:focus{border-color:var(--bl);box-shadow:0 0 0 3px rgba(59,130,200,.06)}.fg input::placeholder{color:var(--d4)}
+.fg-r{display:flex;gap:12px}@media(max-width:400px){.fg-r{flex-direction:column}}
+.specs{display:flex;flex-wrap:wrap;gap:8px}.spec{padding:11px 18px;border-radius:12px;font-size:14px;font-weight:600;border:1.5px solid var(--lt3);background:var(--w);color:var(--d2);cursor:pointer;transition:all .12s}.spec.on{border-color:var(--bl);background:rgba(59,130,200,.04);color:var(--bl)}
+.upl{padding:40px 20px;border:2px dashed var(--lt3);border-radius:18px;text-align:center;cursor:pointer}.upl p{font-size:15px;color:var(--d3);margin-top:8px}
+.cd{background:var(--w);border-radius:18px;padding:22px;margin-bottom:14px;box-shadow:0 2px 16px rgba(0,0,0,.04)}
+.lb{font-size:12px;font-weight:700;letter-spacing:.10em;color:var(--d3);text-transform:uppercase;margin-bottom:12px}
+.step{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--lt2)}.step:last-child{border-bottom:none}
+.step-n{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0}
+.step-t{font-size:15px;font-weight:600;color:var(--d1)}.step-d{font-size:13px;color:var(--d3);margin-top:2px}
+.qr-box{width:160px;height:160px;margin:0 auto 16px;border-radius:16px;background:var(--w);border:1px solid var(--lt2);display:flex;align-items:center;justify-content:center}
+.qr-btn{padding:11px 22px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--f);border:none}
+.qr-p{background:var(--bl);color:#fff}.qr-o{background:var(--w);color:var(--d2);border:1.5px solid var(--lt3)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- S1: WELCOME -->
+<div class="S on" id="s1" style="background:var(--bg)"><div style="min-height:100vh;display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:10px;padding:22px 28px" class="an"><div style="width:30px;height:30px;border-radius:8px;background:var(--bl);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><span style="font-size:18px;font-weight:700">GutGuard</span></div>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 28px">
+    <div class="an d1" style="width:64px;height:64px;border-radius:18px;background:rgba(59,130,200,.1);border:1px solid rgba(59,130,200,.15);display:flex;align-items:center;justify-content:center;margin-bottom:28px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--bl)" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+    <h1 class="an d2" style="font-size:32px;font-weight:700;line-height:1.1;letter-spacing:-.03em;margin-bottom:14px">Protocol Portal<br><span style="color:rgba(255,255,255,.4)">for doctors</span></h1>
+    <p class="an d3" style="font-size:16px;line-height:1.55;color:rgba(255,255,255,.45);max-width:320px;margin-bottom:40px">Enroll patients in structured microbiome protocols. Track inflammation markers. Earn clinical credits.</p>
+    <div class="an d4" style="display:flex;flex-direction:column;gap:14px;margin-bottom:48px">
+      <div style="display:flex;align-items:center;gap:12px"><div style="width:36px;height:36px;border-radius:10px;background:rgba(59,130,200,.08);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--bl);flex-shrink:0">₱</div><span style="font-size:15px;color:rgba(255,255,255,.55);font-weight:500">Up to ₱5,200 credit per enrollment</span></div>
+      <div style="display:flex;align-items:center;gap:12px"><div style="width:36px;height:36px;border-radius:10px;background:rgba(92,184,130,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--grn)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><span style="font-size:15px;color:rgba(255,255,255,.55);font-weight:500">Clinic ranking & monthly rebates</span></div>
+      <div style="display:flex;align-items:center;gap:12px"><div style="width:36px;height:36px;border-radius:10px;background:rgba(204,110,72,.08);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--ter);flex-shrink:0">↗</div><span style="font-size:15px;color:rgba(255,255,255,.55);font-weight:500">National leaderboard recognition</span></div>
+    </div>
+  </div>
+  <div style="padding:0 28px 40px" class="an d5"><button class="btn-p" onclick="go(2)">Create Doctor Account</button><div style="text-align:center;margin-top:14px;font-size:14px;color:rgba(255,255,255,.35)">Already registered? <span style="color:var(--bl);font-weight:600;cursor:pointer">Sign in</span></div></div>
+</div></div>
+
+<!-- S2: PERSONAL -->
+<div class="S" id="s2"><div style="min-height:100vh;background:var(--lt);color:var(--d1);display:flex;flex-direction:column">
+  <div class="nav"><button class="nav-bk" onclick="go(1)">← Back</button><div style="font-size:17px;font-weight:700;color:var(--d1)">GutGuard</div><div style="font-size:13px;color:var(--d3);font-weight:600">Step 1 of 3</div></div>
+  <div class="prog"><div class="prog-fill" style="width:33%"></div></div>
+  <div style="flex:1;padding:28px 28px 40px">
+    <div style="margin-bottom:24px" class="an"><div style="font-size:12px;font-weight:700;letter-spacing:.10em;color:var(--d3);text-transform:uppercase;margin-bottom:6px">Personal Information</div><h2 style="font-size:24px;font-weight:700;letter-spacing:-.02em">Create your account</h2></div>
+    <div class="an d1"><div class="fg-r"><div class="fg" style="flex:1"><label>First Name <span class="rq">*</span></label><input placeholder="Maria" autocomplete="given-name" name="fname"></div><div class="fg" style="flex:1"><label>Last Name <span class="rq">*</span></label><input placeholder="Paloma" autocomplete="family-name" name="lname"></div></div><div class="fg"><label>Email <span class="rq">*</span></label><input type="email" placeholder="dr.paloma@email.com" autocomplete="email" name="email"></div><div class="fg"><label>Mobile <span class="rq">*</span></label><input type="tel" placeholder="+63 917 000 0000" autocomplete="tel" name="phone"></div><div class="fg"><label>Password <span class="rq">*</span></label><input type="password" placeholder="Create a password" autocomplete="new-password"></div></div>
+    <button class="btn-p an d2" onclick="go(3)">Continue</button>
+  </div>
+</div></div>
+
+<!-- S3: PRACTICE -->
+<div class="S" id="s3"><div style="min-height:100vh;background:var(--lt);color:var(--d1);display:flex;flex-direction:column">
+  <div class="nav"><button class="nav-bk" onclick="go(2)">← Back</button><div style="font-size:17px;font-weight:700;color:var(--d1)">GutGuard</div><div style="font-size:13px;color:var(--d3);font-weight:600">Step 2 of 3</div></div>
+  <div class="prog"><div class="prog-fill" style="width:66%"></div></div>
+  <div style="flex:1;padding:28px 28px 40px">
+    <div style="margin-bottom:24px" class="an"><div style="font-size:12px;font-weight:700;letter-spacing:.10em;color:var(--d3);text-transform:uppercase;margin-bottom:6px">Practice Information</div><h2 style="font-size:24px;font-weight:700;letter-spacing:-.02em">About your practice</h2></div>
+    <div class="an d1"><div class="fg"><label>Clinic Name <span class="rq">*</span></label><input placeholder="Paloma Wellness Clinic" autocomplete="organization" name="clinic"></div><div class="fg-r"><div class="fg" style="flex:1"><label>City <span class="rq">*</span></label><input autocomplete="address-level2" name="city"></div><div class="fg" style="flex:1"><label>Province</label><input placeholder="South Cotabato" autocomplete="address-level1" name="province"></div></div><div style="margin-bottom:18px"><label style="display:block;font-size:14px;font-weight:600;color:var(--d2);margin-bottom:8px">Medical Specialty</label><div class="specs" id="specs"></div></div></div>
+    <button class="btn-p an d2" onclick="go(4)">Continue</button>
+  </div>
+</div></div>
+
+<!-- S4: VERIFICATION -->
+<div class="S" id="s4"><div style="min-height:100vh;background:var(--lt);color:var(--d1);display:flex;flex-direction:column">
+  <div class="nav"><button class="nav-bk" onclick="go(3)">← Back</button><div style="font-size:17px;font-weight:700;color:var(--d1)">GutGuard</div><div style="font-size:13px;color:var(--d3);font-weight:600">Step 3 of 3</div></div>
+  <div class="prog"><div class="prog-fill" style="width:100%"></div></div>
+  <div style="flex:1;padding:28px 28px 40px">
+    <div style="margin-bottom:24px" class="an"><div style="font-size:12px;font-weight:700;letter-spacing:.10em;color:var(--d3);text-transform:uppercase;margin-bottom:6px">Verification</div><h2 style="font-size:24px;font-weight:700;letter-spacing:-.02em">Practitioner verification</h2><p style="font-size:14px;color:var(--d3);margin-top:6px;line-height:1.5">Optional. Improves credibility and enables full portal access.</p></div>
+    <div class="an d1"><div class="fg"><label>PRC License Number <span style="font-weight:400;color:var(--d4)">(optional)</span></label><input placeholder="0000000"></div><div style="margin-bottom:18px"><label style="display:block;font-size:14px;font-weight:600;color:var(--d2);margin-bottom:8px">Upload PRC ID <span style="font-weight:400;color:var(--d4)">(optional)</span></label><div class="upl"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--d3)" stroke-width="1.8" style="display:block;margin:0 auto"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><p>Tap to upload image or PDF</p></div></div></div>
+    <button class="btn-p an d2" onclick="go(5)">Submit Registration</button>
+    <button class="btn-o an d3" onclick="go(5)">Skip for now</button>
+  </div>
+</div></div>
+
+<!-- S5: REVIEWING -->
+<div class="S" id="s5"><div style="min-height:100vh;background:var(--lt);color:var(--d1);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 28px">
+  <div id="revIco" style="width:72px;height:72px;border-radius:20px;background:rgba(59,130,200,.06);display:flex;align-items:center;justify-content:center;margin-bottom:24px;transition:all .4s">
+    <div id="revSpin" style="width:24px;height:24px;border:3px solid var(--lt3);border-top-color:var(--bl);border-radius:50%;animation:spin .7s linear infinite"></div>
+    <svg id="revCk" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--grn)" stroke-width="2.5" style="display:none"><polyline points="20 6 9 17 4 12"/></svg>
+  </div>
+  <h2 id="revH" style="font-size:24px;font-weight:700;letter-spacing:-.02em;margin-bottom:8px;text-align:center">Reviewing registration...</h2>
+  <p id="revP" style="font-size:15px;color:var(--d3);text-align:center;max-width:280px;line-height:1.5">This usually takes a few seconds.</p>
+</div></div>
+
+<!-- S6: APPROVED -->
+<div class="S" id="s6"><div style="min-height:100vh;display:flex;flex-direction:column">
+  <div style="background:var(--bg);padding:0 0 32px;color:#fff">
+    <div style="display:flex;align-items:center;gap:10px;padding:22px 28px"><div style="width:30px;height:30px;border-radius:8px;background:var(--bl);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><span style="font-size:18px;font-weight:700">GutGuard</span></div>
+    <div style="text-align:center;padding:24px 28px 0">
+      <div class="an" style="width:72px;height:72px;border-radius:20px;background:rgba(92,184,130,.1);border:1px solid rgba(92,184,130,.18);display:flex;align-items:center;justify-content:center;margin:0 auto 20px"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--grn)" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+      <h1 class="an d1" style="font-size:26px;font-weight:700;letter-spacing:-.03em;margin-bottom:8px">Welcome, Dr. Paloma</h1>
+      <p class="an d2" style="font-size:15px;color:rgba(255,255,255,.45);line-height:1.5;max-width:300px;margin:0 auto">Your clinic portal is active. Share your QR code to start enrolling patients.</p>
+      <div class="an d3" style="margin:28px auto 0;max-width:260px"><div style="height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden"><div id="appBar" style="height:100%;border-radius:2px;background:linear-gradient(90deg,var(--bl),var(--grn));width:0%;transition:width 1s var(--ease)"></div></div><div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:rgba(255,255,255,.30)"><span>Account</span><span>Verified</span><span>Portal Ready</span></div></div>
+    </div>
+  </div>
+  <div style="flex:1;background:var(--lt);padding:24px 28px 40px;color:var(--d1)">
+    <div class="cd an d4" style="text-align:center"><div class="lb">Your Clinic QR Code</div><div class="qr-box"><canvas id="qrO" width="120" height="120"></canvas></div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Paloma Wellness Clinic</div><div style="font-size:14px;color:var(--bl);font-weight:500">gutguard.com/clinic/dr-paloma</div><div style="display:flex;gap:8px;justify-content:center;margin-top:18px"><button class="qr-btn qr-p">Download QR</button><button class="qr-btn qr-o">Print</button></div></div>
+    <div class="cd an d5"><div class="lb">What's Next</div>
+      <div class="step"><div class="step-n" style="background:rgba(59,130,200,.08);color:var(--bl)">1</div><div><div class="step-t">Display QR in your clinic</div><div class="step-d">Reception desk or consultation room</div></div></div>
+      <div class="step"><div class="step-n" style="background:rgba(92,184,130,.08);color:var(--grn)">2</div><div><div class="step-t">First patient scans their labs</div><div class="step-d">They get a Lifestyle Inflammation Score</div></div></div>
+      <div class="step"><div class="step-n" style="background:rgba(204,110,72,.08);color:var(--ter)">3</div><div><div class="step-t">You earn credits automatically</div><div class="step-d">₱400 to ₱5,200 per enrollment</div></div></div>
+    </div>
+    <button class="btn-p" onclick="go(1)">Open Doctor Dashboard</button>
+  </div>
+</div></div>
+
+</div>
+<script>
+function go(n){var cur=document.querySelector('.S.on');if(cur){cur.style.opacity='0';cur.style.transition='opacity .12s';setTimeout(function(){cur.classList.remove('on');cur.style.opacity='';cur.style.transition='';var nxt=document.getElementById('s'+n);nxt.style.opacity='0';nxt.classList.add('on');requestAnimationFrame(function(){nxt.style.transition='opacity .18s';nxt.style.opacity='1';setTimeout(function(){nxt.style.transition=''},200)});scrollTo({top:0,behavior:'instant'});if(n===5)startReview();if(n===6)setTimeout(function(){var b=document.getElementById('appBar');if(b)b.style.width='100%'},200)},130)}}
+function startReview(){setTimeout(function(){document.getElementById('revSpin').style.display='none';document.getElementById('revCk').style.display='block';document.getElementById('revIco').style.background='rgba(92,184,130,.08)';document.getElementById('revH').textContent='Approved!';document.getElementById('revP').textContent='Your doctor account is ready.';setTimeout(function(){go(6)},1200)},2000)}
+var specEl=document.getElementById('specs');var curSpec='Internal Medicine';
+['Internal Medicine','Family Medicine','Endocrinology','Cardiology','Gastroenterology','General Practice'].forEach(function(s){var b=document.createElement('div');b.className='spec'+(s===curSpec?' on':'');b.textContent=s;b.onclick=function(){document.querySelectorAll('.spec').forEach(function(x){x.classList.remove('on')});b.classList.add('on');curSpec=s};specEl.appendChild(b)});
+function drawQR(id){var c=document.getElementById(id);if(!c)return;var ctx=c.getContext('2d');var s=c.width;ctx.fillStyle='#fff';ctx.fillRect(0,0,s,s);ctx.fillStyle='#0C1017';var sz=Math.floor(s/18);for(var y=0;y<s/sz;y++)for(var x=0;x<s/sz;x++)if(Math.random()>.55||(x<3&&y<3)||(x>=s/sz-3&&y<3)||(x<3&&y>=s/sz-3))ctx.fillRect(x*sz,y*sz,sz,sz);
+[[0,0],[s-7*sz,0],[0,s-7*sz]].forEach(function(p){ctx.fillStyle='#0C1017';ctx.fillRect(p[0],p[1],7*sz,7*sz);ctx.fillStyle='#fff';ctx.fillRect(p[0]+sz,p[1]+sz,5*sz,5*sz);ctx.fillStyle='#0C1017';ctx.fillRect(p[0]+2*sz,p[1]+2*sz,3*sz,3*sz)})}
+document.addEventListener('DOMContentLoaded',function(){drawQR('qrO')});
+</script>
+</body>
+</html>
