@@ -127,7 +127,7 @@ export default function ResultsPage() {
             {dbLoading ? <Skeleton w="60px" h={14} r={4} /> : <span>{scanLabel}</span>}
           </div>
           <div style={{ position: "relative", display: "inline-block", marginBottom: 16 }}>
-            <div className="ring" style={{ width: 160, height: 160, position: "relative", zIndex: 1 }}>
+            <div className="score-ring" style={{ width: 160, height: 160, position: "relative", zIndex: 1 }}>
               <div className="ring-trk" style={{ background: "rgba(12,16,23,.08)" }} />
               <div ref={ringRef} className="ring-fill" style={{ "--ra": "0deg", opacity: 0 } as React.CSSProperties} />
               <div className="ring-c">

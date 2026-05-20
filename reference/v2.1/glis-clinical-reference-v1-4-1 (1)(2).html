@@ -1,0 +1,1862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0C1017">
+<title>GLIS Clinical Reference v1.4.1 — IG International / GutGuard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Doctor portal palette */
+  --bg:#0C1017;--s1:#111A26;--s2:#1A2638;
+  --bl:#3B82C8;--bl-deep:#2A6BA8;--bl-soft:rgba(59,130,200,.08);
+  --lt:#F3F2EF;--lt2:#E8E6E0;--lt3:#DDDAD2;
+  --w:#FFFFFF;
+  --d1:#1A1A17;--d2:#3A3833;--d3:#6A6860;--d4:#8A8780;
+
+  /* Clinical severity scale (greens → reds) */
+  --sev-optimal:#3FA66E;--sev-optimal-bg:rgba(63,166,110,.08);--sev-optimal-line:rgba(63,166,110,.22);
+  --sev-good:#5CB882;--sev-good-bg:rgba(92,184,130,.08);--sev-good-line:rgba(92,184,130,.22);
+  --sev-attention:#C9A039;--sev-attention-bg:rgba(212,168,64,.10);--sev-attention-line:rgba(212,168,64,.26);
+  --sev-action:#B85530;--sev-action-bg:rgba(204,110,72,.08);--sev-action-line:rgba(204,110,72,.24);
+  --sev-critical:#A02020;--sev-critical-bg:rgba(212,32,32,.07);--sev-critical-line:rgba(212,32,32,.20);
+
+  /* Pre-scan validity scale (DIFFERENT family — teal/blue/burgundy) */
+  --val-pass:#14807A;--val-pass-bg:rgba(20,128,122,.08);--val-pass-line:rgba(20,128,122,.22);
+  --val-caveat:#7C5BAA;--val-caveat-bg:rgba(124,91,170,.08);--val-caveat-line:rgba(124,91,170,.22);
+  --val-defer:#7A1E55;--val-defer-bg:rgba(122,30,85,.08);--val-defer-line:rgba(122,30,85,.22);
+
+  /* 5-level type ramp (older-user-friendly minimums) */
+  --t-overline:clamp(11px,2.6vw,12px);
+  --t-meta:clamp(13px,3.4vw,14px);
+  --t-body:clamp(16px,4.2vw,17px);
+  --t-callout:clamp(18px,4.8vw,20px);
+  --t-cardtitle:clamp(20px,5.4vw,22px);
+  --t-section:clamp(15px,3.8vw,16px);
+  --t-h1:clamp(28px,7.4vw,34px);
+  --t-h0:clamp(36px,9.8vw,44px);
+  --t-numeric:clamp(48px,14vw,64px);
+
+  /* Spacing (generous) */
+  --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:20px;--sp-6:24px;
+  --sp-7:28px;--sp-8:32px;--sp-9:40px;--sp-10:48px;--sp-12:64px;
+
+  /* Radii */
+  --r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;--r-pill:999px;
+
+  --f:'Outfit',system-ui,-apple-system,sans-serif;
+  --ease:cubic-bezier(.32,1,.68,1);
+  --spring:cubic-bezier(.34,1.56,.64,1);
+
+  /* Shadows */
+  --shd-sm:0 1px 2px rgba(26,26,23,.04),0 1px 3px rgba(26,26,23,.04);
+  --shd-md:0 2px 8px rgba(26,26,23,.04),0 4px 16px rgba(26,26,23,.04);
+  --shd-lg:0 4px 16px rgba(26,26,23,.06),0 12px 32px rgba(26,26,23,.06);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-text-size-adjust:none!important;text-size-adjust:none!important}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;height:100%}
+body{
+  font-family:var(--f);
+  background:var(--lt);
+  min-height:100%;
+  color:var(--d1);
+  line-height:1.6;
+  font-size:var(--t-body);
+  -webkit-font-smoothing:antialiased;
+}
+button,a{
+  font-family:var(--f);
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  min-height:48px;
+}
+
+/* Focus states (accessibility) */
+:focus-visible{
+  outline:3px solid var(--bl);
+  outline-offset:2px;
+  border-radius:var(--r-sm);
+}
+
+/* Reduced motion */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+  }
+}
+
+/* Phone-frame container */
+.Z{max-width:100%;margin:0 auto;background:var(--lt)}
+@media(min-width:540px){
+  body{background:var(--lt2)}
+  .Z{max-width:540px;box-shadow:var(--shd-lg);min-height:100vh}
+}
+@media(min-width:768px){.Z{max-width:640px}}
+@media(min-width:1024px){.Z{max-width:720px;margin:24px auto;border-radius:var(--r-xl);overflow:hidden}}
+
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.rise{animation:rise .6s var(--ease) both}
+.r1{animation-delay:.05s}.r2{animation-delay:.12s}.r3{animation-delay:.20s}.r4{animation-delay:.28s}.r5{animation-delay:.36s}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* HERO — band labels are the dominant visual                          */
+/* ═══════════════════════════════════════════════════════════════════ */
+.hero{
+  background:linear-gradient(180deg,var(--bg) 0%,var(--s1) 60%,var(--s2) 100%);
+  color:#fff;
+  padding:var(--sp-7) var(--sp-5) var(--sp-9);
+  position:relative;
+  overflow:hidden;
+}
+.hero::before{
+  content:"";
+  position:absolute;
+  top:-30%;right:-30%;
+  width:80%;height:80%;
+  background:radial-gradient(ellipse,rgba(59,130,200,.18) 0%,transparent 60%);
+  pointer-events:none;
+}
+.hero::after{
+  content:"";
+  position:absolute;
+  bottom:-50%;left:-30%;
+  width:80%;height:80%;
+  background:radial-gradient(ellipse,rgba(212,168,64,.06) 0%,transparent 60%);
+  pointer-events:none;
+}
+.hero-bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:var(--sp-6);
+  position:relative;
+  z-index:1;
+}
+.hero-brand{display:flex;align-items:center;gap:var(--sp-2)}
+.hero-brand-ico{
+  width:36px;height:36px;
+  border-radius:10px;
+  background:linear-gradient(135deg,var(--bl) 0%,var(--bl-deep) 100%);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 12px rgba(59,130,200,.30);
+}
+.hero-brand-name{
+  font-size:var(--t-callout);
+  font-weight:700;
+  color:#fff;
+  letter-spacing:-.01em;
+}
+.hero-version{
+  font-size:var(--t-overline);
+  font-weight:700;
+  color:rgba(255,255,255,.65);
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  padding:6px 12px;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:var(--r-pill);
+  background:rgba(255,255,255,.04);
+}
+.hero-content{position:relative;z-index:1}
+.hero-eyebrow{
+  font-size:var(--t-overline);
+  font-weight:800;
+  letter-spacing:.16em;
+  color:#7BA8D8;
+  text-transform:uppercase;
+  margin-bottom:var(--sp-3);
+}
+.hero-h1{
+  font-size:var(--t-h1);
+  font-weight:800;
+  color:#fff;
+  letter-spacing:-.025em;
+  line-height:1.1;
+  margin-bottom:var(--sp-3);
+}
+.hero-tagline{
+  font-size:var(--t-callout);
+  font-weight:400;
+  color:rgba(255,255,255,.78);
+  line-height:1.45;
+  margin-bottom:var(--sp-7);
+  max-width:32ch;
+}
+.hero-tagline em{
+  color:#fff;
+  font-style:italic;
+  font-weight:500;
+}
+
+/* Hero band labels grid — 2x2 on mobile, expanding gracefully */
+.hero-bands-label{
+  font-size:var(--t-overline);
+  font-weight:800;
+  color:rgba(255,255,255,.55);
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  margin-bottom:var(--sp-4);
+}
+.hero-bands{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:var(--sp-3);
+}
+.hero-band{
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:var(--r-md);
+  padding:var(--sp-4) var(--sp-3);
+  position:relative;
+  overflow:hidden;
+  transition:transform .15s var(--ease),background .15s;
+}
+.hero-band:hover{background:rgba(255,255,255,.06)}
+.hero-band:active{transform:scale(.98)}
+.hero-band::before{
+  content:"";
+  position:absolute;
+  top:0;left:0;right:0;
+  height:3px;
+}
+.hero-band.optimal::before{background:var(--sev-optimal)}
+.hero-band.good::before{background:var(--sev-good)}
+.hero-band.attention::before{background:var(--sev-attention)}
+.hero-band.action::before{background:var(--sev-action)}
+.hero-band-range{
+  font-size:var(--t-meta);
+  font-weight:800;
+  letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums;
+  margin-bottom:var(--sp-1);
+}
+.hero-band.optimal .hero-band-range{color:#6ED4A0}
+.hero-band.good .hero-band-range{color:#7DD0A2}
+.hero-band.attention .hero-band-range{color:#E8C56A}
+.hero-band.action .hero-band-range{color:#E89070}
+.hero-band-name{
+  font-size:var(--t-callout);
+  font-weight:700;
+  color:#fff;
+  letter-spacing:-.01em;
+  margin-bottom:2px;
+  line-height:1.2;
+}
+.hero-band-tagalog{
+  font-size:var(--t-meta);
+  color:rgba(255,255,255,.55);
+  font-style:italic;
+  line-height:1.3;
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* BODY                                                                 */
+/* ═══════════════════════════════════════════════════════════════════ */
+.body-area{padding:var(--sp-6) var(--sp-5) var(--sp-9)}
+
+/* Section header — bigger, more confident */
+.section-h{margin:var(--sp-8) 0 var(--sp-4)}
+.section-h:first-child{margin-top:0}
+.section-h-overline{
+  display:block;
+  font-size:var(--t-overline);
+  font-weight:800;
+  letter-spacing:.16em;
+  color:var(--bl);
+  text-transform:uppercase;
+  margin-bottom:var(--sp-2);
+}
+.section-h-title{
+  display:block;
+  font-size:var(--t-section);
+  font-weight:700;
+  color:var(--d1);
+  letter-spacing:-.01em;
+  line-height:1.3;
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* CARD ARCHETYPE 1: REFERENCE CARD (data-dense, low chrome)            */
+/* ═══════════════════════════════════════════════════════════════════ */
+.r-card{
+  background:var(--w);
+  border-radius:var(--r-lg);
+  padding:var(--sp-6) var(--sp-5);
+  margin-bottom:var(--sp-3);
+  border:1px solid var(--lt2);
+  box-shadow:var(--shd-sm);
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* CARD ARCHETYPE 2: STATEMENT CARD (large message, low data)           */
+/* ═══════════════════════════════════════════════════════════════════ */
+.s-card{
+  background:linear-gradient(180deg,var(--w) 0%,#FAFAF7 100%);
+  border-radius:var(--r-lg);
+  padding:var(--sp-7) var(--sp-5);
+  margin-bottom:var(--sp-3);
+  border:1px solid var(--lt2);
+  position:relative;
+  overflow:hidden;
+}
+.s-card-ico-bg{
+  position:absolute;
+  top:-20px;right:-20px;
+  width:120px;height:120px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(59,130,200,.06) 0%,transparent 70%);
+  pointer-events:none;
+}
+.s-card-eyebrow{
+  font-size:var(--t-overline);
+  font-weight:800;
+  letter-spacing:.14em;
+  color:var(--bl);
+  text-transform:uppercase;
+  margin-bottom:var(--sp-3);
+}
+.s-card-h{
+  font-size:var(--t-cardtitle);
+  font-weight:700;
+  color:var(--d1);
+  letter-spacing:-.02em;
+  line-height:1.25;
+  margin-bottom:var(--sp-3);
+}
+.s-card-body{
+  font-size:var(--t-body);
+  color:var(--d2);
+  line-height:1.65;
+}
+.s-card-body p{margin-bottom:var(--sp-3)}
+.s-card-body p:last-child{margin-bottom:0}
+.s-card-body strong{color:var(--d1);font-weight:600}
+.s-card-body em{font-style:italic}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* EMPHASIZED REFERENCE CARDS                                           */
+/* ═══════════════════════════════════════════════════════════════════ */
+.r-card-emph-bl{
+  border:2px solid var(--bl);
+  box-shadow:0 4px 20px rgba(59,130,200,.10);
+  background:linear-gradient(180deg,rgba(59,130,200,.02) 0%,var(--w) 30%);
+}
+.r-card-emph-coral{
+  border:2px solid var(--sev-action);
+  box-shadow:0 4px 20px rgba(184,85,48,.12);
+  background:linear-gradient(180deg,rgba(184,85,48,.025) 0%,var(--w) 30%);
+}
+.card-flag{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  position:absolute;
+  top:-12px;left:var(--sp-4);
+  background:var(--bl);
+  color:#fff;
+  font-size:var(--t-overline);
+  font-weight:800;
+  letter-spacing:.10em;
+  text-transform:uppercase;
+  padding:5px 12px;
+  border-radius:var(--r-sm);
+  box-shadow:0 2px 8px rgba(59,130,200,.30);
+}
+.card-flag-coral{background:var(--sev-action);box-shadow:0 2px 8px rgba(184,85,48,.30)}
+.card-flag svg{width:12px;height:12px}
+
+/* Card header (reference card) */
+.r-card-h{
+  display:flex;
+  align-items:center;
+  gap:var(--sp-3);
+  margin-bottom:var(--sp-5);
+}
+.r-card-ico{
+  width:40px;height:40px;
+  border-radius:var(--r-md);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.r-card-ico-bl{background:var(--bl-soft);color:var(--bl)}
+.r-card-ico-grn{background:rgba(92,184,130,.10);color:var(--sev-good)}
+.r-card-ico-amber{background:rgba(212,168,64,.12);color:var(--sev-attention)}
+.r-card-ico-coral{background:rgba(184,85,48,.10);color:var(--sev-action)}
+.r-card-ico-red{background:rgba(212,32,32,.08);color:var(--sev-critical)}
+.r-card-ico-purple{background:rgba(124,91,170,.10);color:var(--val-caveat)}
+.r-card-title{
+  font-size:var(--t-callout);
+  font-weight:700;
+  color:var(--d1);
+  letter-spacing:-.01em;
+  line-height:1.25;
+}
+.r-card-sub{
+  font-size:var(--t-meta);
+  color:var(--d3);
+  margin-top:2px;
+  line-height:1.4;
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* BAND ROWS (clinical severity scale)                                  */
+/* ═══════════════════════════════════════════════════════════════════ */
+.bands{display:flex;flex-direction:column;gap:var(--sp-2)}
+.band-row{
+  display:flex;align-items:center;gap:var(--sp-3);
+  padding:var(--sp-4);
+  border-radius:var(--r-md);
+  border:1px solid;
+  transition:transform .12s var(--ease);
+}
+.band-row:active{transform:scale(.985)}
+.band-row.optimal{background:var(--sev-optimal-bg);border-color:var(--sev-optimal-line)}
+.band-row.good{background:var(--sev-good-bg);border-color:var(--sev-good-line)}
+.band-row.attention{background:var(--sev-attention-bg);border-color:var(--sev-attention-line)}
+.band-row.action{background:var(--sev-action-bg);border-color:var(--sev-action-line)}
+.band-range{
+  font-size:var(--t-callout);
+  font-weight:800;
+  letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums;
+  flex-shrink:0;
+  min-width:60px;
+}
+.band-row.optimal .band-range{color:var(--sev-optimal)}
+.band-row.good .band-range{color:var(--sev-good)}
+.band-row.attention .band-range{color:var(--sev-attention)}
+.band-row.action .band-range{color:var(--sev-action)}
+.band-info{flex:1;min-width:0}
+.band-name{
+  font-size:var(--t-callout);
+  font-weight:700;
+  color:var(--d1);
+  letter-spacing:-.01em;
+  line-height:1.2;
+}
+.band-tagalog{
+  font-size:var(--t-meta);
+  color:var(--d3);
+  font-style:italic;
+  margin-top:2px;
+}
+.band-clinical{
+  font-size:var(--t-overline);
+  font-weight:700;
+  color:var(--d3);
+  letter-spacing:.10em;
+  text-transform:uppercase;
+  flex-shrink:0;
+  text-align:right;
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* SAMPLE SCORE GALLERY — shows ALL 4 bands                            */
+/* ═══════════════════════════════════════════════════════════════════ */
+.gallery-intro{
+  font-size:var(--t-body);
+  color:var(--d2);
+  line-height:1.6;
+  margin-bottom:var(--sp-5);
+}
+.gallery{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:var(--sp-3);
+}
+@media(max-width:380px){
+  .gallery{grid-template-columns:1fr}
+}
+.sample{
+  background:linear-gradient(165deg,var(--bg) 0%,var(--s1) 100%);
+  border-radius:var(--r-md);
+  padding:var(--sp-4);
+  position:relative;
+  overflow:hidden;
+}
+.sample::before{
+  content:"";
+  position:absolute;
+  top:-40%;right:-30%;
+  width:80%;height:80%;
+  pointer-events:none;
+  opacity:.6;
+}
+.sample.optimal::before{background:radial-gradient(ellipse,rgba(63,166,110,.20) 0%,transparent 60%)}
+.sample.good::before{background:radial-gradient(ellipse,rgba(92,184,130,.15) 0%,transparent 60%)}
+.sample.attention::before{background:radial-gradient(ellipse,rgba(212,168,64,.18) 0%,transparent 60%)}
+.sample.action::before{background:radial-gradient(ellipse,rgba(204,110,72,.18) 0%,transparent 60%)}
+.sample-tag{
+  position:relative;
+  font-size:var(--t-overline);
+  font-weight:700;
+  color:rgba(255,255,255,.50);
+  letter-spacing:.10em;
+  text-transform:uppercase;
+  margin-bottom:var(--sp-3);
+}
+.sample-ring{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin-bottom:var(--sp-3);
+}
+.sring{width:96px;height:96px;position:relative}
+.sring-trk{
+  position:absolute;inset:0;border-radius:50%;
+  background:rgba(255,255,255,.06);
+  -webkit-mask:radial-gradient(closest-side,transparent 86%,#000 86.5%,#000 98%,transparent 98.5%);
+  mask:radial-gradient(closest-side,transparent 86%,#000 86.5%,#000 98%,transparent 98.5%);
+}
+.sring-fill{
+  position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 180deg,#5CB882 0%,#7EBC6C 14%,#9AB854 28%,#C4B044 42%,#D4A840 52%,#CC8844 66%,#E8772E 78%,#D03030 90%,#D42020 100%);
+  -webkit-mask-composite:source-in;
+  mask-composite:intersect;
+}
+.sring-fill.f-15{
+  -webkit-mask-image:radial-gradient(closest-side,transparent 86%,#000 86.5%,#000 98%,transparent 98.5%),conic-gradient(from 180deg,#000 54deg,transparent 54deg);
+  mask-image:radial-gradient(closest-side,transparent 86%,#000 86.5%,#000 98%,transparent 98.5%),conic-gradient(from 180deg,#000 54deg,transparent 54deg);
+}
+.sring-fill.f-42{
+  -webkit-mask-image:radial-gradient(closest-side,transparent 86%,#000 86.5%,#000 98%,transparent 98.5%),conic-gradient(from 180deg,#000 151deg,transparent 151deg);
+  mask-image:radial-gradient(closest-side,transparent 86%,#000 86.5%,#000 98%,transparent 98.5%),conic-gradient(from 180deg,#000 151deg,transparent 151deg);
+}
+.sring-fill.f-58{
+  -webkit-mask-image:radial-gradient(closest-side,transparent 86%,#000 86.5%,#000 98%,transparent 98.5%),conic-gradient(from 180deg,#000 209deg,transparent 209deg);
+  mask-image:radial-gradient(closest-side,transparent 86%,#000 86.5%,#000 98%,transparent 98.5%),conic-gradient(from 180deg,#000 209deg,transparent 209deg);
+}
+.sring-fill.f-82{
+  -webkit-mask-image:radial-gradient(closest-side,transparent 86%,#000 86.5%,#000 98%,transparent 98.5%),conic-gradient(from 180deg,#000 295deg,transparent 295deg);
+  mask-image:radial-gradient(closest-side,transparent 86%,#000 86.5%,#000 98%,transparent 98.5%),conic-gradient(from 180deg,#000 295deg,transparent 295deg);
+}
+.sring-num{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:36px;font-weight:800;color:#fff;
+  letter-spacing:-.04em;line-height:1;
+}
+.sample-band{
+  position:relative;
+  text-align:center;
+  margin-bottom:var(--sp-2);
+}
+.sample-band-name{
+  font-size:var(--t-body);
+  font-weight:700;
+  color:#fff;
+  letter-spacing:-.01em;
+  line-height:1.2;
+}
+.sample.optimal .sample-band-name{color:#6ED4A0}
+.sample.good .sample-band-name{color:#7DD0A2}
+.sample.attention .sample-band-name{color:#E8C56A}
+.sample.action .sample-band-name{color:#E89070}
+.sample-band-tl{
+  font-size:var(--t-meta);
+  color:rgba(255,255,255,.55);
+  font-style:italic;
+  margin-top:1px;
+}
+.sample-context{
+  position:relative;
+  font-size:var(--t-overline);
+  color:rgba(255,255,255,.60);
+  text-align:center;
+  line-height:1.4;
+  margin-top:var(--sp-2);
+  padding-top:var(--sp-2);
+  border-top:1px solid rgba(255,255,255,.06);
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* TIER COMPARISON                                                      */
+/* ═══════════════════════════════════════════════════════════════════ */
+.tier-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:var(--sp-3);
+}
+@media(max-width:380px){
+  .tier-grid{grid-template-columns:1fr}
+}
+.tier{
+  padding:var(--sp-4);
+  border-radius:var(--r-md);
+  background:var(--lt);
+  border:1.5px solid var(--lt2);
+  position:relative;
+  transition:transform .12s var(--ease);
+}
+.tier:active{transform:scale(.98)}
+.tier-featured{
+  background:var(--bl-soft);
+  border-color:rgba(59,130,200,.30);
+}
+.tier-badge{
+  position:absolute;
+  top:-8px;right:var(--sp-3);
+  background:var(--bl);
+  color:#fff;
+  font-size:var(--t-overline);
+  font-weight:800;
+  letter-spacing:.10em;
+  text-transform:uppercase;
+  padding:2px 8px;
+  border-radius:var(--r-sm);
+}
+.tier-name{
+  font-size:var(--t-callout);
+  font-weight:800;
+  color:var(--d1);
+  letter-spacing:-.01em;
+  margin-bottom:var(--sp-1);
+}
+.tier-featured .tier-name{color:var(--bl)}
+.tier-meta{
+  font-size:var(--t-overline);
+  font-weight:700;
+  color:var(--d3);
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  margin-bottom:var(--sp-3);
+}
+.tier-cost{
+  font-size:var(--t-callout);
+  font-weight:800;
+  color:var(--d1);
+  font-variant-numeric:tabular-nums;
+  margin-bottom:var(--sp-2);
+}
+.tier-featured .tier-cost{color:var(--bl)}
+.tier-purpose{
+  font-size:var(--t-meta);
+  color:var(--d3);
+  line-height:1.5;
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* MARKER TABLE                                                         */
+/* ═══════════════════════════════════════════════════════════════════ */
+.marker-table{width:100%;border-collapse:collapse;margin-top:var(--sp-2)}
+.marker-table th{
+  font-size:var(--t-overline);
+  font-weight:800;
+  letter-spacing:.10em;
+  color:var(--d4);
+  text-transform:uppercase;
+  text-align:left;
+  padding:var(--sp-2) var(--sp-3) var(--sp-3);
+  border-bottom:2px solid var(--lt2);
+}
+.marker-table th.num{text-align:right}
+.marker-table td{
+  font-size:var(--t-meta);
+  color:var(--d2);
+  padding:var(--sp-3);
+  border-bottom:1px solid var(--lt2);
+  vertical-align:top;
+  line-height:1.45;
+}
+.marker-table td.num{
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+  font-weight:700;
+  color:var(--d1);
+  font-size:var(--t-body);
+}
+.marker-table tr:last-child td{border-bottom:none}
+.marker-name{font-weight:700;color:var(--d1);font-size:var(--t-body)}
+.marker-domain{font-size:var(--t-overline);color:var(--d3);margin-top:2px;letter-spacing:.04em}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* PRE-SCAN VALIDITY RECOMMENDATIONS (DISTINCT COLOR FAMILY)            */
+/* ═══════════════════════════════════════════════════════════════════ */
+.rec-stack{display:flex;flex-direction:column;gap:var(--sp-3);margin-top:var(--sp-2)}
+.rec{
+  padding:var(--sp-4) var(--sp-4) var(--sp-4) var(--sp-5);
+  border-radius:var(--r-md);
+  border:1.5px solid;
+  background:var(--w);
+  position:relative;
+}
+.rec::before{
+  content:"";
+  position:absolute;
+  left:0;top:0;bottom:0;
+  width:4px;
+  border-radius:var(--r-md) 0 0 var(--r-md);
+}
+.rec-pass{border-color:var(--val-pass-line);background:var(--val-pass-bg)}
+.rec-pass::before{background:var(--val-pass)}
+.rec-caveat{border-color:var(--val-caveat-line);background:var(--val-caveat-bg)}
+.rec-caveat::before{background:var(--val-caveat)}
+.rec-defer{border-color:var(--val-defer-line);background:var(--val-defer-bg)}
+.rec-defer::before{background:var(--val-defer)}
+
+.rec-h{
+  display:flex;
+  align-items:center;
+  gap:var(--sp-3);
+  margin-bottom:var(--sp-3);
+  flex-wrap:wrap;
+}
+.rec-icon-box{
+  width:36px;height:36px;
+  border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.rec-pass .rec-icon-box{background:rgba(20,128,122,.14);color:var(--val-pass)}
+.rec-caveat .rec-icon-box{background:rgba(124,91,170,.14);color:var(--val-caveat)}
+.rec-defer .rec-icon-box{background:rgba(122,30,85,.14);color:var(--val-defer)}
+.rec-titles{flex:1;min-width:0}
+.rec-name{
+  font-size:var(--t-callout);
+  font-weight:700;
+  color:var(--d1);
+  letter-spacing:-.01em;
+  line-height:1.2;
+}
+.rec-pass .rec-name{color:var(--val-pass)}
+.rec-caveat .rec-name{color:var(--val-caveat)}
+.rec-defer .rec-name{color:var(--val-defer)}
+.rec-tagalog{
+  font-size:var(--t-meta);
+  color:var(--d3);
+  font-style:italic;
+  margin-top:2px;
+}
+.rec-trigger{
+  font-size:var(--t-meta);
+  color:var(--d2);
+  line-height:1.6;
+  margin-bottom:var(--sp-3);
+}
+.rec-trigger strong{color:var(--d1);font-weight:700}
+.rec-action{
+  font-size:var(--t-meta);
+  color:var(--d3);
+  line-height:1.55;
+  padding-top:var(--sp-3);
+  border-top:1px solid rgba(0,0,0,.06);
+}
+.rec-action strong{color:var(--d2);font-weight:600}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* PATHWAY CARDS                                                        */
+/* ═══════════════════════════════════════════════════════════════════ */
+.pathway{
+  display:flex;
+  gap:var(--sp-3);
+  padding:var(--sp-4);
+  background:var(--lt);
+  border-radius:var(--r-md);
+  margin-bottom:var(--sp-3);
+  border:1.5px solid var(--lt2);
+  transition:transform .12s var(--ease);
+}
+.pathway:active{transform:scale(.99)}
+.pathway:last-child{margin-bottom:0}
+.pathway-featured{background:var(--bl-soft);border-color:rgba(59,130,200,.26)}
+.pathway-letter{
+  width:36px;height:36px;
+  border-radius:50%;
+  background:var(--w);
+  border:1.5px solid var(--lt3);
+  color:var(--d2);
+  font-size:var(--t-callout);
+  font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.pathway-featured .pathway-letter{
+  background:var(--bl);
+  border-color:var(--bl);
+  color:#fff;
+}
+.pathway-content{flex:1;min-width:0}
+.pathway-name{
+  font-size:var(--t-callout);
+  font-weight:700;
+  color:var(--d1);
+  letter-spacing:-.01em;
+  line-height:1.25;
+  margin-bottom:var(--sp-1);
+}
+.pathway-desc{
+  font-size:var(--t-meta);
+  color:var(--d3);
+  line-height:1.55;
+}
+.pathway-desc strong{color:var(--d2);font-weight:600}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* RESPONSIBILITY/BOUNDARY LISTS                                        */
+/* ═══════════════════════════════════════════════════════════════════ */
+.resp-list{display:flex;flex-direction:column;gap:var(--sp-2)}
+.resp{
+  display:flex;
+  align-items:flex-start;
+  gap:var(--sp-3);
+  padding:var(--sp-3) var(--sp-4);
+  background:var(--lt);
+  border-radius:var(--r-md);
+  border-left:3px solid;
+}
+.resp-yes{border-left-color:var(--sev-good)}
+.resp-no{border-left-color:var(--sev-action)}
+.resp-icon{
+  width:24px;height:24px;
+  border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+  margin-top:1px;
+}
+.resp-yes .resp-icon{background:rgba(92,184,130,.18);color:var(--sev-good)}
+.resp-no .resp-icon{background:rgba(184,85,48,.16);color:var(--sev-action)}
+.resp-text{
+  font-size:var(--t-meta);
+  color:var(--d2);
+  line-height:1.55;
+}
+.resp-text strong{color:var(--d1);font-weight:700}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* CRITICAL FINDINGS TABLE                                              */
+/* ═══════════════════════════════════════════════════════════════════ */
+.refer-list{display:flex;flex-direction:column;gap:var(--sp-2);margin-top:var(--sp-2)}
+.refer{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:var(--sp-3);
+  padding:var(--sp-3) var(--sp-4);
+  background:var(--sev-critical-bg);
+  border:1px solid var(--sev-critical-line);
+  border-radius:var(--r-md);
+  align-items:center;
+}
+.refer-finding{
+  font-size:var(--t-meta);
+  color:var(--d1);
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+  line-height:1.45;
+}
+.refer-spec{
+  font-size:var(--t-overline);
+  color:var(--sev-critical);
+  font-weight:700;
+  letter-spacing:.06em;
+  text-align:right;
+  text-transform:uppercase;
+  flex-shrink:0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* WORKFLOW (visual flow with branching)                                */
+/* ═══════════════════════════════════════════════════════════════════ */
+.flow{display:flex;flex-direction:column;gap:0;margin-top:var(--sp-3)}
+.flow-step{
+  display:flex;
+  gap:var(--sp-4);
+  padding-bottom:var(--sp-5);
+  position:relative;
+}
+.flow-step:not(:last-child)::after{
+  content:"";
+  position:absolute;
+  left:17px;top:36px;bottom:0;
+  width:2px;
+  background:linear-gradient(180deg,var(--lt2) 0%,var(--lt2) 100%);
+}
+.flow-num{
+  width:36px;height:36px;
+  border-radius:50%;
+  background:var(--bl-soft);
+  color:var(--bl);
+  font-size:var(--t-body);
+  font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+  z-index:1;
+  border:2px solid var(--w);
+  box-shadow:0 0 0 1.5px var(--lt2);
+}
+.flow-step.f-crit .flow-num{
+  background:var(--sev-critical-bg);
+  color:var(--sev-critical);
+  box-shadow:0 0 0 1.5px var(--sev-critical-line);
+}
+.flow-step.f-branch .flow-num{
+  background:rgba(124,91,170,.10);
+  color:var(--val-caveat);
+  box-shadow:0 0 0 1.5px rgba(124,91,170,.20);
+}
+.flow-content{flex:1;padding-top:var(--sp-1);min-width:0}
+.flow-h{
+  font-size:var(--t-body);
+  font-weight:700;
+  color:var(--d1);
+  margin-bottom:var(--sp-1);
+  line-height:1.3;
+}
+.flow-d{
+  font-size:var(--t-meta);
+  color:var(--d3);
+  line-height:1.55;
+}
+.flow-branches{
+  display:flex;
+  gap:var(--sp-2);
+  flex-wrap:wrap;
+  margin-top:var(--sp-2);
+}
+.flow-branch{
+  font-size:var(--t-overline);
+  font-weight:700;
+  letter-spacing:.04em;
+  padding:4px 10px;
+  border-radius:var(--r-pill);
+}
+.fb-pass{background:var(--val-pass-bg);color:var(--val-pass);border:1px solid var(--val-pass-line)}
+.fb-caveat{background:var(--val-caveat-bg);color:var(--val-caveat);border:1px solid var(--val-caveat-line)}
+.fb-defer{background:var(--val-defer-bg);color:var(--val-defer);border:1px solid var(--val-defer-line)}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* CASE NARRATIVES (flowing prose, not rigid grid)                      */
+/* ═══════════════════════════════════════════════════════════════════ */
+.cases{display:flex;flex-direction:column;gap:var(--sp-3);margin-top:var(--sp-3)}
+.case{
+  background:var(--w);
+  border-radius:var(--r-md);
+  padding:var(--sp-5) var(--sp-4);
+  border:1px solid var(--lt2);
+  border-left:4px solid;
+  position:relative;
+}
+.case-pass{border-left-color:var(--val-pass)}
+.case-caveat{border-left-color:var(--val-caveat)}
+.case-defer{border-left-color:var(--val-defer)}
+.case-crit{border-left-color:var(--sev-critical)}
+
+.case-head{
+  display:flex;
+  align-items:center;
+  gap:var(--sp-2);
+  margin-bottom:var(--sp-3);
+  flex-wrap:wrap;
+}
+.case-num{
+  font-size:var(--t-overline);
+  font-weight:800;
+  letter-spacing:.10em;
+  color:var(--d4);
+  text-transform:uppercase;
+  font-variant-numeric:tabular-nums;
+}
+.case-pass .case-num{color:var(--val-pass)}
+.case-caveat .case-num{color:var(--val-caveat)}
+.case-defer .case-num{color:var(--val-defer)}
+.case-crit .case-num{color:var(--sev-critical)}
+.case-title{
+  font-size:var(--t-callout);
+  font-weight:700;
+  color:var(--d1);
+  letter-spacing:-.01em;
+  line-height:1.25;
+  flex:1;
+  min-width:0;
+}
+.case-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:4px 10px;
+  border-radius:var(--r-pill);
+  font-size:var(--t-overline);
+  font-weight:800;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  flex-shrink:0;
+}
+.case-pill-pass{background:var(--val-pass-bg);color:var(--val-pass);border:1px solid var(--val-pass-line)}
+.case-pill-caveat{background:var(--val-caveat-bg);color:var(--val-caveat);border:1px solid var(--val-caveat-line)}
+.case-pill-defer{background:var(--val-defer-bg);color:var(--val-defer);border:1px solid var(--val-defer-line)}
+.case-pill-crit{background:var(--sev-critical-bg);color:var(--sev-critical);border:1px solid var(--sev-critical-line)}
+
+.case-body{
+  font-size:var(--t-meta);
+  color:var(--d2);
+  line-height:1.65;
+}
+.case-body p{margin-bottom:var(--sp-3)}
+.case-body p:last-child{margin-bottom:0}
+.case-body strong{color:var(--d1);font-weight:700}
+.case-decision{
+  margin-top:var(--sp-3);
+  padding:var(--sp-3) var(--sp-4);
+  border-radius:var(--r-sm);
+  background:var(--lt);
+  font-size:var(--t-meta);
+  line-height:1.6;
+  color:var(--d2);
+}
+.case-decision strong{color:var(--d1);font-weight:700}
+.case-decision-label{
+  display:block;
+  font-size:var(--t-overline);
+  font-weight:800;
+  letter-spacing:.10em;
+  text-transform:uppercase;
+  color:var(--d4);
+  margin-bottom:var(--sp-1);
+}
+.case-pass .case-decision-label{color:var(--val-pass)}
+.case-caveat .case-decision-label{color:var(--val-caveat)}
+.case-defer .case-decision-label{color:var(--val-defer)}
+.case-crit .case-decision-label{color:var(--sev-critical)}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* INSET                                                                */
+/* ═══════════════════════════════════════════════════════════════════ */
+.inset{
+  padding:var(--sp-3) var(--sp-4);
+  border-radius:var(--r-md);
+  background:var(--lt);
+  font-size:var(--t-meta);
+  color:var(--d3);
+  line-height:1.6;
+  margin-top:var(--sp-3);
+}
+.inset strong{color:var(--d1);font-weight:700}
+.inset-info{
+  background:var(--bl-soft);
+  border-left:3px solid var(--bl);
+  color:var(--d2);
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* FOOTER (designed metadata, not afterthought)                         */
+/* ═══════════════════════════════════════════════════════════════════ */
+.foot{
+  margin-top:var(--sp-9);
+  padding:var(--sp-7) var(--sp-5);
+  background:linear-gradient(180deg,var(--lt) 0%,#EAE8E0 100%);
+  border-top:1px solid var(--lt3);
+}
+.foot-grid{
+  display:flex;
+  flex-direction:column;
+  gap:var(--sp-5);
+}
+.foot-block-label{
+  font-size:var(--t-overline);
+  font-weight:800;
+  letter-spacing:.14em;
+  color:var(--d4);
+  text-transform:uppercase;
+  margin-bottom:var(--sp-2);
+}
+.foot-block-content{
+  font-size:var(--t-meta);
+  color:var(--d2);
+  line-height:1.6;
+}
+.foot-block-content strong{color:var(--d1);font-weight:700}
+.foot-bottom{
+  margin-top:var(--sp-6);
+  padding-top:var(--sp-5);
+  border-top:1px solid var(--lt3);
+  display:flex;
+  flex-direction:column;
+  gap:var(--sp-2);
+  font-size:var(--t-overline);
+  color:var(--d4);
+  line-height:1.6;
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* PRINT                                                                */
+/* ═══════════════════════════════════════════════════════════════════ */
+@media print{
+  body{background:#fff;font-size:11pt}
+  .Z{box-shadow:none;max-width:100%;margin:0;border-radius:0}
+  .hero{padding:24pt;break-after:avoid;page-break-after:avoid}
+  .hero::before,.hero::after{display:none}
+  .r-card,.s-card,.case{break-inside:avoid;page-break-inside:avoid;box-shadow:none}
+  .section-h{break-after:avoid;page-break-after:avoid}
+  .rise{animation:none}
+}
+
+/* Very small screens — readability rescue */
+@media(max-width:360px){
+  :root{
+    --t-h1:24px;
+    --t-cardtitle:19px;
+    --t-callout:17px;
+    --t-body:16px;
+    --t-meta:14px;
+  }
+  .body-area{padding:var(--sp-5) var(--sp-4) var(--sp-9)}
+  .r-card,.s-card{padding:var(--sp-5) var(--sp-4)}
+  .hero{padding:var(--sp-6) var(--sp-4) var(--sp-7)}
+  .hero-bands{gap:var(--sp-2)}
+  .gallery{gap:var(--sp-2)}
+}
+</style>
+</head>
+<body>
+
+<div class="Z">
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- HERO — band labels are the dominant visual                       -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <header class="hero">
+    <div class="hero-bar">
+      <div class="hero-brand">
+        <div class="hero-brand-ico">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="hero-brand-name">GutGuard</div>
+      </div>
+      <div class="hero-version">v1.4.1 · May 2026</div>
+    </div>
+
+    <div class="hero-content rise r1">
+      <div class="hero-eyebrow">GLIS Clinical Reference</div>
+      <h1 class="hero-h1">A wellness screening score for inflammaging</h1>
+      <p class="hero-tagline">GLIS measures <em>chronic low-grade systemic inflammation</em> — not acute illness, autoimmune disease, or cancer. Lower score = lower inflammatory burden.</p>
+
+      <div class="hero-bands-label">Score-band labels &middot; what your patient sees</div>
+      <div class="hero-bands">
+        <div class="hero-band optimal rise r2" tabindex="0">
+          <div class="hero-band-range">0–25</div>
+          <div class="hero-band-name">Optimal</div>
+          <div class="hero-band-tagalog">Mabuti</div>
+        </div>
+        <div class="hero-band good rise r3" tabindex="0">
+          <div class="hero-band-range">26–50</div>
+          <div class="hero-band-name">Good</div>
+          <div class="hero-band-tagalog">Maayos</div>
+        </div>
+        <div class="hero-band attention rise r4" tabindex="0">
+          <div class="hero-band-range">51–75</div>
+          <div class="hero-band-name">Pay Attention</div>
+          <div class="hero-band-tagalog">Pansinin</div>
+        </div>
+        <div class="hero-band action rise r5" tabindex="0">
+          <div class="hero-band-range">76–100</div>
+          <div class="hero-band-name">Take Action</div>
+          <div class="hero-band-tagalog">Kumilos Na</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- BODY                                                              -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <main class="body-area">
+
+    <!-- ──────────────────────────────────────────────── -->
+    <!-- SAMPLE GALLERY — all 4 bands                      -->
+    <!-- ──────────────────────────────────────────────── -->
+    <div class="section-h">
+      <span class="section-h-overline">Visual Reference</span>
+      <span class="section-h-title">What you'll see in the doctor portal</span>
+    </div>
+
+    <div class="r-card r-card-emph-bl rise r1" style="margin-top:var(--sp-4)">
+      <div class="card-flag">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 2"/></svg>
+        Most Used
+      </div>
+      <p class="gallery-intro">Four representative scores from a 0–100 ring. Each shows the gradient fill at the actual angle a patient with that score would see.</p>
+      <div class="gallery">
+        <div class="sample optimal" tabindex="0">
+          <div class="sample-tag">Example A</div>
+          <div class="sample-ring">
+            <div class="sring">
+              <div class="sring-trk"></div>
+              <div class="sring-fill f-15"></div>
+              <div class="sring-num">15</div>
+            </div>
+          </div>
+          <div class="sample-band">
+            <div class="sample-band-name">Optimal</div>
+            <div class="sample-band-tl">Mabuti</div>
+          </div>
+          <div class="sample-context">Healthy 32M · all markers in range</div>
+        </div>
+
+        <div class="sample good" tabindex="0">
+          <div class="sample-tag">Example B</div>
+          <div class="sample-ring">
+            <div class="sring">
+              <div class="sring-trk"></div>
+              <div class="sring-fill f-42"></div>
+              <div class="sring-num">42</div>
+            </div>
+          </div>
+          <div class="sample-band">
+            <div class="sample-band-name">Good</div>
+            <div class="sample-band-tl">Maayos</div>
+          </div>
+          <div class="sample-context">45F · borderline HbA1c</div>
+        </div>
+
+        <div class="sample attention" tabindex="0">
+          <div class="sample-tag">Case 1</div>
+          <div class="sample-ring">
+            <div class="sring">
+              <div class="sring-trk"></div>
+              <div class="sring-fill f-58"></div>
+              <div class="sring-num">58</div>
+            </div>
+          </div>
+          <div class="sample-band">
+            <div class="sample-band-name">Pay Attention</div>
+            <div class="sample-band-tl">Pansinin</div>
+          </div>
+          <div class="sample-context">42F · HbA1c 5.9 · CRP 2.8</div>
+        </div>
+
+        <div class="sample action" tabindex="0">
+          <div class="sample-tag">Case 4</div>
+          <div class="sample-ring">
+            <div class="sring">
+              <div class="sring-trk"></div>
+              <div class="sring-fill f-82"></div>
+              <div class="sring-num">82</div>
+            </div>
+          </div>
+          <div class="sample-band">
+            <div class="sample-band-name">Take Action</div>
+            <div class="sample-band-tl">Kumilos Na</div>
+          </div>
+          <div class="sample-context">51F · CRP 11.5 · severe-abnormal floor</div>
+        </div>
+      </div>
+      <div class="inset inset-info">Ring matches patient portal spec exactly: 9-stop conic gradient (180°), 89%–98% mask, fill driven by score × 3.6°.</div>
+    </div>
+
+    <!-- ──────────────────────────────────────────────── -->
+    <!-- WHAT GLIS MEASURES                                -->
+    <!-- ──────────────────────────────────────────────── -->
+    <div class="section-h">
+      <span class="section-h-overline">Concept</span>
+      <span class="section-h-title">What GLIS measures &mdash; and what it doesn't</span>
+    </div>
+
+    <!-- Statement card: Inflammaging -->
+    <div class="s-card rise r1">
+      <div class="s-card-ico-bg"></div>
+      <div class="s-card-eyebrow">The Specific Target</div>
+      <h2 class="s-card-h">Inflammaging — chronic low-grade systemic inflammation</h2>
+      <div class="s-card-body">
+        <p>Sustained, sub-clinical inflammatory state driven by metabolic dysfunction, gut dysbiosis, lifestyle, and aging. CRP typically <strong>1–10 mg/L</strong>.</p>
+        <p>Anchored in peer-reviewed literature: <em>Franceschi 2000, Furman 2019 (Nat Med), Levine 2018 (Aging)</em>.</p>
+      </div>
+    </div>
+
+    <!-- Statement card: Exclusion zone -->
+    <div class="s-card rise r2" style="border-color:var(--sev-action-line)">
+      <div class="s-card-ico-bg" style="background:radial-gradient(circle,rgba(184,85,48,.06) 0%,transparent 70%)"></div>
+      <div class="s-card-eyebrow" style="color:var(--sev-action)">Exclusion Zone</div>
+      <h2 class="s-card-h">When GLIS is the wrong tool</h2>
+      <div class="s-card-body">
+        <p>Acute infections &middot; autoimmune disease (RA, SLE, IBD) &middot; organ-specific inflammation &middot; allergic / Type 2 inflammation &middot; cancer-associated inflammation &middot; neuroinflammation &middot; pregnancy &middot; pediatric (under 18) &middot; established CV or diabetic disease management.</p>
+        <div class="inset"><strong>Operationally enforced</strong> via the patient-facing pre-scan check-in. Patients reporting these conditions at draw time route to <em>Reschedule recommended</em>.</div>
+      </div>
+    </div>
+
+    <!-- ──────────────────────────────────────────────── -->
+    <!-- SCORE-BAND LABELS DETAIL                          -->
+    <!-- ──────────────────────────────────────────────── -->
+    <div class="section-h">
+      <span class="section-h-overline">Patient Vocabulary</span>
+      <span class="section-h-title">Score-band labels in detail</span>
+    </div>
+
+    <div class="r-card rise r1">
+      <div class="r-card-h">
+        <div class="r-card-ico r-card-ico-bl">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 2"/></svg>
+        </div>
+        <div>
+          <div class="r-card-title">Same vocabulary, both views</div>
+          <div class="r-card-sub">Patient-facing labels match physician documentation</div>
+        </div>
+      </div>
+      <div class="bands">
+        <div class="band-row optimal" tabindex="0">
+          <div class="band-range">0–25</div>
+          <div class="band-info">
+            <div class="band-name">Optimal</div>
+            <div class="band-tagalog">Mabuti</div>
+          </div>
+          <div class="band-clinical">Low</div>
+        </div>
+        <div class="band-row good" tabindex="0">
+          <div class="band-range">26–50</div>
+          <div class="band-info">
+            <div class="band-name">Good</div>
+            <div class="band-tagalog">Maayos</div>
+          </div>
+          <div class="band-clinical">Moderate</div>
+        </div>
+        <div class="band-row attention" tabindex="0">
+          <div class="band-range">51–75</div>
+          <div class="band-info">
+            <div class="band-name">Pay Attention</div>
+            <div class="band-tagalog">Pansinin</div>
+          </div>
+          <div class="band-clinical">High</div>
+        </div>
+        <div class="band-row action" tabindex="0">
+          <div class="band-range">76–100</div>
+          <div class="band-info">
+            <div class="band-name">Take Action</div>
+            <div class="band-tagalog">Kumilos Na</div>
+          </div>
+          <div class="band-clinical">Critical</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ──────────────────────────────────────────────── -->
+    <!-- TIER ARCHITECTURE                                 -->
+    <!-- ──────────────────────────────────────────────── -->
+    <div class="section-h">
+      <span class="section-h-overline">Tier Architecture</span>
+      <span class="section-h-title">PH lab pricing &middot; same 0–100 scale</span>
+    </div>
+
+    <div class="r-card rise r1">
+      <div class="r-card-h">
+        <div class="r-card-ico r-card-ico-bl">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </div>
+        <div>
+          <div class="r-card-title">Four tiers &middot; choose what fits</div>
+          <div class="r-card-sub">Same 0&ndash;100 scale &middot; verified PH lab availability May 2026</div>
+        </div>
+      </div>
+      <div class="tier-grid">
+        <div class="tier" tabindex="0">
+          <div class="tier-name">Screen</div>
+          <div class="tier-meta">3 markers · partial</div>
+          <div class="tier-cost">₱1,000–1,500</div>
+          <div class="tier-purpose">Budget pre-screening only. Does not gate protocol entry. <strong>Universal walk-in.</strong></div>
+        </div>
+        <div class="tier tier-featured" tabindex="0">
+          <div class="tier-badge">Default</div>
+          <div class="tier-name">Core</div>
+          <div class="tier-meta">5 markers · canonical</div>
+          <div class="tier-cost">₱2,000–3,000</div>
+          <div class="tier-purpose">Standard for protocol enrollment. Three biological domains. <strong>Universal walk-in nationwide.</strong></div>
+        </div>
+        <div class="tier" tabindex="0">
+          <div class="tier-name">Plus</div>
+          <div class="tier-meta">8 markers · pathway</div>
+          <div class="tier-cost">₱5,500–8,500</div>
+          <div class="tier-purpose">Premium · metabolic syndrome workup. <strong>Major chains in cities &amp; regional centers.</strong></div>
+        </div>
+        <div class="tier" tabindex="0">
+          <div class="tier-name">Complete</div>
+          <div class="tier-meta">12 markers · full</div>
+          <div class="tier-cost">₱9,500–14,500</div>
+          <div class="tier-purpose">Adds neuroendocrine domain. <strong>AM draw required</strong> for cortisol. <strong>Reference labs only</strong> &mdash; Hi-Precision Plus, Medicard FSC, hospital reference labs.</div>
+        </div>
+      </div>
+      <div class="inset inset-info" style="margin-top:var(--sp-3)"><strong>Geographic reach:</strong> Core &amp; Plus tiers are universally walk-in accessible at major PH chains (Hi-Precision 60+ branches, Medicard, Aspire, Healthway). <strong>Complete tier requires reference-grade lab access</strong> &mdash; practical for Metro Manila, Cebu, Davao, GenSan, and other regional cities; smaller provincial towns may need sample courier (2&ndash;3 day turnaround).</div>
+    </div>
+
+    <div class="r-card rise r2">
+      <div class="r-card-h">
+        <div class="r-card-ico r-card-ico-bl">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M3 12c2-3 5-5 9-5s7 2 9 5c-2 3-5 5-9 5s-7-2-9-5z"/></svg>
+        </div>
+        <div>
+          <div class="r-card-title">Core marker weights</div>
+          <div class="r-card-sub">5 markers · 100 points · same scale across tiers</div>
+        </div>
+      </div>
+      <table class="marker-table">
+        <thead>
+          <tr><th>Marker</th><th>Domain</th><th class="num">Weight</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><div class="marker-name">hs-CRP</div><div class="marker-domain">Lab order</div></td><td>Inflammatory</td><td class="num">24</td></tr>
+          <tr><td><div class="marker-name">NLR</div><div class="marker-domain">Calculated · from CBC differential</div></td><td>Inflammatory</td><td class="num">16</td></tr>
+          <tr><td><div class="marker-name">HbA1c</div><div class="marker-domain">Lab order · dominant in PH cohort</div></td><td>Metabolic</td><td class="num">35</td></tr>
+          <tr><td><div class="marker-name">ALT</div><div class="marker-domain">Lab order · 25 W / 33 M (AGA)</div></td><td>Organ Function</td><td class="num">12</td></tr>
+          <tr><td><div class="marker-name">eGFR</div><div class="marker-domain">Calculated · from creatinine via CKD-EPI 2021</div></td><td>Organ Function</td><td class="num">13</td></tr>
+        </tbody>
+      </table>
+      <div class="inset"><strong>Plus</strong> adds ferritin (lab), TyG <em>(calculated from fasting trig × glucose)</em>, uric acid (lab), albumin (lab). <strong>Complete</strong> adds homocysteine, fasting insulin (HOMA-IR <em>calculated</em>), GGT, cortisol AM, DHEA-S &mdash; all lab orders.</div>
+    </div>
+
+    <!-- ──────────────────────────────────────────────── -->
+    <!-- PRE-SCAN CHECK-IN GATE (purple validity scale)    -->
+    <!-- ──────────────────────────────────────────────── -->
+    <div class="section-h">
+      <span class="section-h-overline">Validity Gate</span>
+      <span class="section-h-title">Pre-scan check-in &middot; anchored to draw date</span>
+    </div>
+
+    <div class="r-card rise r1">
+      <div class="r-card-h">
+        <div class="r-card-ico r-card-ico-purple">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div>
+          <div class="r-card-title">Three system recommendations</div>
+          <div class="r-card-sub">Patient confirms draw date and time, then 12-question check-in</div>
+        </div>
+      </div>
+
+      <div class="rec-stack">
+        <div class="rec rec-pass">
+          <div class="rec-h">
+            <div class="rec-icon-box">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="rec-titles">
+              <div class="rec-name">Good to scan</div>
+              <div class="rec-tagalog">Pwede na mag-scan</div>
+            </div>
+          </div>
+          <div class="rec-trigger"><strong>Full confidence.</strong> No relevant conditions reported around blood draw date.</div>
+          <div class="rec-action"><strong>→</strong> Standard GLIS computation. Score plotted on trajectory at blood draw date.</div>
+        </div>
+
+        <div class="rec rec-caveat">
+          <div class="rec-h">
+            <div class="rec-icon-box">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 2L1 21h22L12 2z"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17.5" r=".8" fill="currentColor"/></svg>
+            </div>
+            <div class="rec-titles">
+              <div class="rec-name">Scan with caveat</div>
+              <div class="rec-tagalog">Mag-scan na, may note</div>
+            </div>
+          </div>
+          <div class="rec-trigger"><strong>Score with interpretive note.</strong> Vaccination 24–72hr before · NSAIDs/steroids/antibiotics · strenuous exercise within 48hr · alcohol 3+ within 72hr · poor sleep · non-fasted · acute stress within 7 days · active menstruation · non-AM draw (Complete).</div>
+          <div class="rec-action"><strong>→</strong> Score computed normally with caveat note shown to patient and physician.</div>
+        </div>
+
+        <div class="rec rec-defer">
+          <div class="rec-h">
+            <div class="rec-icon-box">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+            </div>
+            <div class="rec-titles">
+              <div class="rec-name">Reschedule recommended</div>
+              <div class="rec-tagalog">Iurong muna ang scan</div>
+            </div>
+          </div>
+          <div class="rec-trigger"><strong>Score deferred.</strong> Active infection within 2 weeks · surgery within 4 weeks · active autoimmune flare · cancer treatment · pregnancy · vaccination within 24hr.</div>
+          <div class="rec-action"><strong>→</strong> No composite score. Individual markers visible. Physician override possible (Pathway C only).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ──────────────────────────────────────────────── -->
+    <!-- WORKFLOW (with branching)                         -->
+    <!-- ──────────────────────────────────────────────── -->
+    <div class="section-h">
+      <span class="section-h-overline">Workflow</span>
+      <span class="section-h-title">From upload to scored result</span>
+    </div>
+
+    <div class="r-card rise r1">
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-num">1</div>
+          <div class="flow-content">
+            <div class="flow-h">Upload lab report</div>
+            <div class="flow-d">Photo, file upload, or manual entry. OCR extracts marker values for confirmation.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">2</div>
+          <div class="flow-content">
+            <div class="flow-h">Confirm draw date &amp; time</div>
+            <div class="flow-d">Time matters for AM cortisol (Complete). Date anchors all check-in questions.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">3</div>
+          <div class="flow-content">
+            <div class="flow-h">Chronic context (one-time)</div>
+            <div class="flow-d">Smoking · hormonal contraception/HRT · stable chronic conditions. Stored on profile.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">4</div>
+          <div class="flow-content">
+            <div class="flow-h">12-question check-in (anchored to draw)</div>
+            <div class="flow-d">Recent illness · surgery · autoimmune flare · cancer · pregnancy · vaccination · medications · exercise · alcohol · sleep · fasting · stress.</div>
+          </div>
+        </div>
+        <div class="flow-step f-branch">
+          <div class="flow-num">5</div>
+          <div class="flow-content">
+            <div class="flow-h">System branches by recommendation</div>
+            <div class="flow-d">One of three outcomes:</div>
+            <div class="flow-branches">
+              <span class="flow-branch fb-pass">Good to scan</span>
+              <span class="flow-branch fb-caveat">Scan with caveat</span>
+              <span class="flow-branch fb-defer">Reschedule recommended</span>
+            </div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">6</div>
+          <div class="flow-content">
+            <div class="flow-h">Confidence handling</div>
+            <div class="flow-d">Below 75% of tier markers (4/5 Core, 6/8 Plus, 9/12 Complete): no composite score. Auto tier-downgrade where applicable.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">7</div>
+          <div class="flow-content">
+            <div class="flow-h">GLIS score &amp; band label</div>
+            <div class="flow-d">0–100 with Optimal / Good / Pay Attention / Take Action label, body-state copy, marker breakdown.</div>
+          </div>
+        </div>
+        <div class="flow-step f-crit">
+          <div class="flow-num">!</div>
+          <div class="flow-content">
+            <div class="flow-h">Critical findings &rarr; patient acknowledgment</div>
+            <div class="flow-d">Soft-gate. Patient acknowledges and proceeds to consult specialist. Audit trail logged.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ──────────────────────────────────────────────── -->
+    <!-- PATIENT PATHWAYS                                  -->
+    <!-- ──────────────────────────────────────────────── -->
+    <div class="section-h">
+      <span class="section-h-overline">Patient Pathways</span>
+      <span class="section-h-title">Three ways patients use GLIS</span>
+    </div>
+
+    <div class="r-card rise r1">
+      <div class="pathway" tabindex="0">
+        <div class="pathway-letter">A</div>
+        <div class="pathway-content">
+          <div class="pathway-name">Independent use</div>
+          <div class="pathway-desc">Default. Patient uses GLIS alone. Their own PCP handles clinical follow-up outside GutGuard. <strong>Most common pathway.</strong></div>
+        </div>
+      </div>
+      <div class="pathway" tabindex="0">
+        <div class="pathway-letter">B</div>
+        <div class="pathway-content">
+          <div class="pathway-name">Use with offline doctor</div>
+          <div class="pathway-desc">Patient shares GLIS report PDF with their existing doctor outside the GutGuard system. No GutGuard infrastructure needed.</div>
+        </div>
+      </div>
+      <div class="pathway pathway-featured" tabindex="0">
+        <div class="pathway-letter">C</div>
+        <div class="pathway-content">
+          <div class="pathway-name">Optional GutGuard supervising physician</div>
+          <div class="pathway-desc">Patient opts in. You review flagged findings within 24–72hr (business hours), provide override decisions on deferred scans, and offer initial referral guidance.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ──────────────────────────────────────────────── -->
+    <!-- SUPERVISING PHYSICIAN ROLE                        -->
+    <!-- ──────────────────────────────────────────────── -->
+    <div class="section-h">
+      <span class="section-h-overline">If You Participate</span>
+      <span class="section-h-title">Pathway C &middot; opt-in only</span>
+    </div>
+
+    <div class="r-card rise r1">
+      <div class="r-card-h">
+        <div class="r-card-ico r-card-ico-grn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div>
+          <div class="r-card-title">Your responsibilities</div>
+          <div class="r-card-sub">When you've accepted a case</div>
+        </div>
+      </div>
+      <div class="resp-list">
+        <div class="resp resp-yes">
+          <div class="resp-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="resp-text">Review flagged GLIS results in the doctor portal</div>
+        </div>
+        <div class="resp resp-yes">
+          <div class="resp-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="resp-text">Acknowledge within <strong>24 hours</strong> (mandatory critical findings) or <strong>72 hours</strong> (non-urgent flags). Business hours only.</div>
+        </div>
+        <div class="resp resp-yes">
+          <div class="resp-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="resp-text">Review pre-scan check-in responses with their <strong>temporal context</strong> to the blood draw date</div>
+        </div>
+        <div class="resp resp-yes">
+          <div class="resp-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="resp-text">Make override decisions on deferred scans with <strong>documented clinical justification</strong></div>
+        </div>
+        <div class="resp resp-yes">
+          <div class="resp-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="resp-text">Provide <strong>initial referral guidance</strong>. Patient is responsible for following through.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="r-card rise r2">
+      <div class="r-card-h">
+        <div class="r-card-ico r-card-ico-coral">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <div>
+          <div class="r-card-title">Your boundaries</div>
+          <div class="r-card-sub">What you are <strong style="color:var(--sev-action)">not</strong> responsible for</div>
+        </div>
+      </div>
+      <div class="resp-list">
+        <div class="resp resp-no">
+          <div class="resp-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+          <div class="resp-text">The patient's primary care physician</div>
+        </div>
+        <div class="resp resp-no">
+          <div class="resp-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+          <div class="resp-text">Long-term follow-up of incidental findings beyond initial referral</div>
+        </div>
+        <div class="resp resp-no">
+          <div class="resp-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+          <div class="resp-text">Treatment of conditions outside the GutGuard protocol scope</div>
+        </div>
+        <div class="resp resp-no">
+          <div class="resp-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+          <div class="resp-text">Care coordination with patient's other healthcare providers</div>
+        </div>
+        <div class="resp resp-no">
+          <div class="resp-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+          <div class="resp-text">Findings the patient does not act on after you have flagged them</div>
+        </div>
+      </div>
+      <div class="inset inset-info">Participation is <strong>opt-in</strong>. Decline cases, set caseload limits, or withdraw with 30 days' notice.</div>
+    </div>
+
+    <!-- ──────────────────────────────────────────────── -->
+    <!-- CRITICAL FINDINGS                                 -->
+    <!-- ──────────────────────────────────────────────── -->
+    <div class="section-h">
+      <span class="section-h-overline">Critical Findings</span>
+      <span class="section-h-title">Mandatory referral &middot; soft-gate workflow</span>
+    </div>
+
+    <div class="r-card r-card-emph-coral rise r1" style="margin-top:var(--sp-4)">
+      <div class="card-flag card-flag-coral">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 2L1 21h22L12 2z"/></svg>
+        Decision-Critical
+      </div>
+      <div class="r-card-h">
+        <div class="r-card-ico r-card-ico-red">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2L1 21h22L12 2z"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17.5" r=".8" fill="currentColor"/></svg>
+        </div>
+        <div>
+          <div class="r-card-title">Findings requiring consult</div>
+          <div class="r-card-sub">Patient acknowledgment regardless of pathway</div>
+        </div>
+      </div>
+
+      <div class="refer-list">
+        <div class="refer"><div class="refer-finding">HbA1c ≥ 6.5%</div><div class="refer-spec">Endocrinology</div></div>
+        <div class="refer"><div class="refer-finding">hs-CRP &gt; 10 mg/L (no acute cause)</div><div class="refer-spec">Internal Med</div></div>
+        <div class="refer"><div class="refer-finding">NLR &gt; 5.0</div><div class="refer-spec">Heme / IM</div></div>
+        <div class="refer"><div class="refer-finding">eGFR &lt; 30 mL/min/1.73m²</div><div class="refer-spec">Nephrology</div></div>
+        <div class="refer"><div class="refer-finding">ALT &gt; 100 U/L</div><div class="refer-spec">GI / Hepatology</div></div>
+        <div class="refer"><div class="refer-finding">Albumin &lt; 3.0 g/dL</div><div class="refer-spec">Internal Med</div></div>
+        <div class="refer"><div class="refer-finding">Homocysteine &gt; 30 μmol/L</div><div class="refer-spec">IM / Cardiology</div></div>
+        <div class="refer"><div class="refer-finding">Fasting Insulin &gt; 25 · HOMA-IR &gt; 5.0</div><div class="refer-spec">Endocrinology</div></div>
+        <div class="refer"><div class="refer-finding">Cortisol AM &lt; 3 or &gt; 25 μg/dL</div><div class="refer-spec">Endocrinology</div></div>
+      </div>
+
+      <div class="inset">Patient sees <strong>Critical Finding notification</strong> with mandatory acknowledgment checkbox before they can proceed. Acknowledgment logged in audit trail with timestamp.</div>
+    </div>
+
+    <!-- ──────────────────────────────────────────────── -->
+    <!-- WORKED CASES (narrative prose, not rigid grid)    -->
+    <!-- ──────────────────────────────────────────────── -->
+    <div class="section-h">
+      <span class="section-h-overline">Decision Support</span>
+      <span class="section-h-title">Worked clinical cases</span>
+    </div>
+
+    <div class="cases">
+
+      <!-- Case 1 -->
+      <article class="case case-pass rise r1">
+        <header class="case-head">
+          <span class="case-num">Case 1</span>
+          <h3 class="case-title">Standard use, independent</h3>
+          <span class="case-pill case-pill-pass">Good to scan</span>
+        </header>
+        <div class="case-body">
+          <p>A <strong>42-year-old woman</strong> with a family history of type 2 diabetes presents reporting persistent fatigue. She uses GLIS independently (Pathway A). Her blood is drawn October 10 at 7:30 AM, fasted, after seven hours of sleep, with no recent illness or relevant medications.</p>
+          <p>Markers come back: <strong>hs-CRP 2.8</strong>, <strong>NLR 2.4</strong>, <strong>HbA1c 5.9%</strong>, <strong>ALT 28</strong>, <strong>eGFR 88</strong>. GLIS Core score: <strong>58 (Pay Attention / Pansinin)</strong>.</p>
+        </div>
+        <div class="case-decision">
+          <span class="case-decision-label">Decision</span>
+          Patient enrolls in protocol and decides to discuss her trending-prediabetic HbA1c with her own PCP at the next visit. She downloads the GLIS PDF report to share. Her PCP remains medical home; GutGuard tracks inflammation trajectory.
+        </div>
+      </article>
+
+      <!-- Case 2 -->
+      <article class="case case-defer rise r2">
+        <header class="case-head">
+          <span class="case-num">Case 2</span>
+          <h3 class="case-title">Recent infection at draw time</h3>
+          <span class="case-pill case-pill-defer">Reschedule</span>
+        </header>
+        <div class="case-body">
+          <p>A <strong>35-year-old man</strong> uploads results 10 days post-recovery. His blood was drawn on October 8 at 8:00 AM. On the check-in question 1, he answers <strong>Yes</strong> — he was symptomatic with flu on the draw date.</p>
+          <p>Markers: <strong>hs-CRP 5.2</strong>, <strong>NLR 3.8</strong>, <strong>HbA1c 5.4%</strong>, <strong>ALT 22</strong>, <strong>eGFR 95</strong>. The system defers; individual markers remain visible but no composite score is computed.</p>
+        </div>
+        <div class="case-decision">
+          <span class="case-decision-label">Decision</span>
+          Markers reflect a recovering infection, not inflammaging. Patient sees individual values for reference and reschedules a new draw two weeks after symptom resolution. No physician action needed (Pathway A is self-directed). The temporal anchor caught what an &ldquo;are you sick now?&rdquo; question would have missed.
+        </div>
+      </article>
+
+      <!-- Case 3 -->
+      <article class="case case-defer rise r3">
+        <header class="case-head">
+          <span class="case-num">Case 3</span>
+          <h3 class="case-title">Physician override, supervising pathway</h3>
+          <span class="case-pill case-pill-defer">Override</span>
+        </header>
+        <div class="case-body">
+          <p>A <strong>58-year-old man</strong> with Crohn&rsquo;s in 18-month remission on infliximab is in Pathway C with you as supervising physician. On Q3 he answers <strong>Yes</strong> — interpreting &ldquo;treated for an autoimmune condition&rdquo; literally because he&rsquo;s on biologic therapy.</p>
+          <p>The system recommends Reschedule (Tier 1 defer). But you have clinical context: calprotectin under 50 at the June check, no inflammatory symptoms in office visits before or after the draw.</p>
+        </div>
+        <div class="case-decision">
+          <span class="case-decision-label">Override</span>
+          Document justification — sustained remission, calprotectin under 50, no flare symptoms. System computes Plus <strong>38 (Good / Maayos)</strong> with override annotation. Educate patient on Q3 phrasing for future scans. Audit trail captures the date-specific reasoning.
+        </div>
+      </article>
+
+      <!-- Case 4 -->
+      <article class="case case-crit rise r4">
+        <header class="case-head">
+          <span class="case-num">Case 4</span>
+          <h3 class="case-title">Critical finding, independent pathway</h3>
+          <span class="case-pill case-pill-crit">Critical</span>
+        </header>
+        <div class="case-body">
+          <p>A <strong>51-year-old woman</strong>, asymptomatic at draw, uses Pathway A. Blood drawn November 5 at 7:00 AM; check-in answers all &ldquo;No&rdquo;; system says <em>Good to scan</em>.</p>
+          <p>Markers: <strong>hs-CRP 11.5</strong>, NLR 3.2, HbA1c 5.8%, ALT 24, eGFR 86. The severe-abnormal floor triggers — CRP &gt; 10 — producing <strong>Take Action / Kumilos Na</strong>.</p>
+        </div>
+        <div class="case-decision">
+          <span class="case-decision-label">Acknowledgment soft-gate</span>
+          System displays: &ldquo;hs-CRP 11.5 mg/L. Consult Internal Medicine before continuing protocol.&rdquo; Patient checks acknowledgment, schedules PCP appointment. PCP workup identifies early Sjögren&rsquo;s. PCP becomes primary clinician; GutGuard role secondary. <em>This is the kind of finding GLIS surfaces but cannot diagnose.</em>
+        </div>
+      </article>
+
+    </div>
+
+    <div class="inset" style="margin-top:var(--sp-4)">Full 8-case set (non-AM cortisol, partial Plus panel, inappropriate use, undisclosed flare) in <strong>GLIS Clinical Methodology v1.3.1 · Section 14</strong>.</div>
+
+    <!-- ──────────────────────────────────────────────── -->
+    <!-- CONFIDENCE & REPEAT INTERVAL                      -->
+    <!-- ──────────────────────────────────────────────── -->
+    <div class="section-h">
+      <span class="section-h-overline">Confidence &amp; Cadence</span>
+      <span class="section-h-title">Marker thresholds &middot; repeat intervals</span>
+    </div>
+
+    <div class="r-card rise r1">
+      <div class="r-card-h">
+        <div class="r-card-ico r-card-ico-bl">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div>
+          <div class="r-card-title">Minimum thresholds</div>
+          <div class="r-card-sub">Below threshold: no composite score, individual markers shown</div>
+        </div>
+      </div>
+      <table class="marker-table">
+        <thead>
+          <tr><th>Tier</th><th>Markers</th><th class="num">Min for score</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="marker-name">Screen</span></td><td>3</td><td class="num">3 (all)</td></tr>
+          <tr><td><span class="marker-name">Core</span></td><td>5</td><td class="num">4 of 5</td></tr>
+          <tr><td><span class="marker-name">Plus</span></td><td>8</td><td class="num">6 of 8</td></tr>
+          <tr><td><span class="marker-name">Complete</span></td><td>12</td><td class="num">9 of 12</td></tr>
+        </tbody>
+      </table>
+      <div class="inset"><strong>Repeat scan interval:</strong> 6–8 weeks minimum for protocol decisions. Reflects CRP and HbA1c kinetics. Closer scans may show variability rather than meaningful change — system shows soft notification but does not block.</div>
+    </div>
+
+    <!-- ──────────────────────────────────────────────── -->
+    <!-- VALIDATION STATUS                                 -->
+    <!-- ──────────────────────────────────────────────── -->
+    <div class="section-h">
+      <span class="section-h-overline">Honest Disclosure</span>
+      <span class="section-h-title">Validation status &amp; conflict of interest</span>
+    </div>
+
+    <div class="s-card rise r1" style="border-color:var(--sev-attention-line)">
+      <div class="s-card-ico-bg" style="background:radial-gradient(circle,rgba(212,168,64,.08) 0%,transparent 70%)"></div>
+      <div class="s-card-eyebrow" style="color:var(--sev-attention)">Read Before Participating</div>
+      <h2 class="s-card-h">What you should know</h2>
+      <div class="s-card-body">
+        <p><strong>Validation pending.</strong> GLIS is based on peer-reviewed inflammaging literature, but the specific composite has not undergone independent peer-reviewed validation. v1.5 study planned: n ≥ 150 Filipino adults, IRB submission Q3 2026, target publication Philippine Journal of Internal Medicine.</p>
+        <p><strong>Commercial conflict.</strong> GLIS is owned and operated by IG International / GutGuard, manufacturer of the Pre→Pro→Postbiotic + MBS protocol that GLIS is used to assess. Methodology safeguards: operationally enforced exclusion zone, peer-reviewed marker selection, transparent validation roadmap.</p>
+        <p><strong>Until validation completes:</strong> Use GLIS as one component of clinical assessment, not as a standalone tool. Communicate to patients that GLIS is a screening tool with validation pending.</p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- FOOTER (designed metadata)                                       -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <footer class="foot">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-block-label">Document</div>
+        <div class="foot-block-content"><strong>GLIS Clinical Reference Card v1.4.1</strong><br>May 2026 &middot; Reflects GLIS Clinical Methodology v1.3.1<br><em style="color:var(--d3);font-size:.92em">v1.4.1 update: PH lab availability calibration &middot; calculated-vs-ordered markers clarified &middot; Complete tier reference-lab access note added</em></div>
+      </div>
+      <div>
+        <div class="foot-block-label">Hierarchy</div>
+        <div class="foot-block-content">Where this card and other framework documents differ on substantive methodology, the <strong>GLIS Inflammation Framework v1.4 (Master)</strong> controls.</div>
+      </div>
+      <div>
+        <div class="foot-block-label">Owner</div>
+        <div class="foot-block-content"><strong>IG International / GutGuard</strong><br>General Santos City, Philippines<br>Medical Director (advisory, optional supervising physician): Dr. Shane Animas, MD &middot; Internal Medicine</div>
+      </div>
+      <div>
+        <div class="foot-block-label">Scope</div>
+        <div class="foot-block-content">For monitoring purposes only. GLIS is a non-diagnostic wellness screening and protocol-tracking tool. Not a medical device under FDA Philippines regulations. <strong>Pediatric exclusion: 18+ only. Pregnancy exclusion.</strong> Optional supervising physician role; participation is opt-in for both patient and physician.</div>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <div>Companion documents: <em>GLIS Inflammation Framework v1.4 (Master Methodology)</em>, <em>GLIS Clinical Rationale v1.5</em>, <em>GLIS Clinical Methodology v1.3.1</em>.</div>
+      <div>Distribution: physicians evaluating GLIS, advising patients on its use, or participating as supervising physicians. Distribution outside the clinical audience requires IG International / GutGuard approval.</div>
+    </div>
+  </footer>
+
+</div>
+
+</body>
+</html>

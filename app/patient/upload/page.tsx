@@ -66,11 +66,13 @@ export default function UploadPage() {
   const procRef    = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastFileRef = useRef<File | null>(null);
+  const isAuthedRef = useRef(false);
 
   useEffect(() => {
     fetch("/api/patient/dashboard").then(r => r.json()).then(d => {
       const count = (d.scanHistory ?? []).length;
       setScanLabel(ordinal(count + 1) + " Scan");
+      isAuthedRef.current = true;
     }).catch(() => {});
   }, []);
 
@@ -209,7 +211,7 @@ export default function UploadPage() {
               confDiv.style.opacity = "1";
               const acts = document.getElementById("confActions");
               if (acts) { acts.style.transition = "opacity .4s var(--ease),transform .4s var(--ease)"; acts.style.opacity = "1"; acts.style.transform = "translateY(0)"; }
-              document.getElementById("calcBtn")?.addEventListener("click", () => router.push("/patient/account"));
+              document.getElementById("calcBtn")?.addEventListener("click", () => router.push(isAuthedRef.current ? "/patient/scan" : "/patient/account"));
             });
           }, 500);
         }, afterFound);
@@ -267,7 +269,7 @@ export default function UploadPage() {
               confDiv.style.opacity = "1";
               const acts = document.getElementById("confActions");
               if (acts) { acts.style.transition = "opacity .4s var(--ease),transform .4s var(--ease)"; acts.style.opacity = "1"; acts.style.transform = "translateY(0)"; }
-              document.getElementById("calcBtn")?.addEventListener("click", () => router.push("/patient/account"));
+              document.getElementById("calcBtn")?.addEventListener("click", () => router.push(isAuthedRef.current ? "/patient/scan" : "/patient/account"));
               document.getElementById("retryBtn")?.addEventListener("click", handleRetry);
             });
           }, 500);

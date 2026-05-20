@@ -181,7 +181,7 @@ export default function CinematicPage() {
           ref={ringWrapRef}
           style={{ width: 180, height: 180, position: "relative", zIndex: 1, overflow: "hidden", transition: "transform .2s var(--ease)", animation: phase === 1 ? "ringPulse 2.2s ease-in-out infinite" : "none" }}
         >
-          <div className="ring" style={{ width: "100%", height: "100%", position: "relative" }}>
+          <div className="score-ring" style={{ width: "100%", height: "100%", position: "relative" }}>
             <div className="ring-trk" />
             {/* Ring fill: pre-snapped to 281deg; rAF will drive --ra during sweep */}
             <div ref={ringFillRef} className="ring-fill" style={{ "--ra": "281deg" } as React.CSSProperties} />

@@ -129,7 +129,7 @@ export function PatientDashboardContent() {
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px" }}>
             <div className="an d1" style={{ position: "relative", marginBottom: 32 }}>
-              <div className="ring" style={{ width: "clamp(160px,46vw,200px)", height: "clamp(160px,46vw,200px)" }}>
+              <div className="score-ring" style={{ width: "clamp(160px,46vw,200px)", height: "clamp(160px,46vw,200px)" }}>
                 <div className="ring-trk" style={{ animation: "ringBreathe 3s ease-in-out infinite" }} />
                 <div className="ring-fill" style={{ opacity: 0 }} />
                 <div className="ring-c">
@@ -213,7 +213,7 @@ export function PatientDashboardContent() {
       {/* Score hero */}
       <div style={{ textAlign: "center", padding: "36px 24px 0" }}>
         {patientName && <div style={{ fontSize: "clamp(18px,5vw,20px)", fontWeight: 300, color: "rgba(255,255,255,.70)", marginBottom: 24, letterSpacing: ".02em" }}>Hey {patientName}</div>}
-        <div className="ring" style={{ width: 140, height: 140, margin: "0 auto", filter: `drop-shadow(0 0 24px ${col}35)` }}>
+        <div className="score-ring" style={{ width: 140, height: 140, margin: "0 auto", filter: `drop-shadow(0 0 24px ${col}35)` }}>
           <div className="ring-trk" />
           <div ref={ringFillRef} className="ring-fill" style={{ "--ra": "0deg", opacity: 0, background: "conic-gradient(from 180deg,#5CB882 0%,#7EBC6C 14%,#9AB854 28%,#C4B044 42%,#D4A840 52%,#CC8844 66%,#E8772E 78%,#D03030 90%,#D42020 100%)" } as React.CSSProperties} />
           <div className="ring-c">

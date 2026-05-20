@@ -266,9 +266,9 @@ const dashboardStyles = `
 .bar span{display:block;height:100%;border-radius:2px}
 .patient-action{padding:0 17px 13px}
 .patient-action span{display:block;width:100%;padding:10px 13px;border-radius:12px;border:1px solid currentColor;font-size:15px;font-weight:850;background:transparent}
-.ring{position:relative;width:50px;height:50px;flex-shrink:0;border-radius:50%;background:conic-gradient(from 180deg,#5cb882 0deg,#d4a840 150deg,#e8772e 250deg,#d42020 var(--angle),rgba(0,0,0,.06) var(--angle))}
-.ring::after{content:"";position:absolute;inset:5px;border-radius:50%;background:var(--doc-white)}
-.ring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1;font-size:14px;font-weight:900}
+.doc-ring{position:relative;width:50px;height:50px;flex-shrink:0;border-radius:50%;background:conic-gradient(from 180deg,#5cb882 0deg,#d4a840 150deg,#e8772e 250deg,#d42020 var(--angle),rgba(0,0,0,.06) var(--angle))}
+.doc-ring::after{content:"";position:absolute;inset:5px;border-radius:50%;background:var(--doc-white)}
+.doc-ring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1;font-size:14px;font-weight:900}
 .utilities{display:flex;align-items:center;justify-content:center;gap:18px;margin:20px 0;padding:12px 0;border-top:1px solid var(--doc-lt2);flex-wrap:wrap}
 .utility-btn{border:0;background:transparent;color:var(--doc-d3);font-size:15px;font-weight:850;display:flex;align-items:center;gap:6px}
 .detail-panel{background:var(--doc-white);border:1px solid var(--doc-lt2);border-radius:18px;padding:22px;margin:18px 0}
@@ -1214,7 +1214,7 @@ function ScoreRing({ score, size = 50 }: { score: number; size?: number }) {
 
   return (
     <span
-      className="ring"
+      className="doc-ring"
       style={{
         "--angle": `${angle}deg`,
         width: size,
