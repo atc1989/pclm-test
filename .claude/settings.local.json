@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /Users/omiple/Developer/ATC/GutGuardBREv2/gutguard-pclm/app/api/admin/doctors/\\\\[id\\\\]/verify)",
+      "Bash(mkdir -p /Users/omiple/Developer/ATC/GutGuardBREv2/gutguard-pclm/app/api/admin/doctors/\\\\[id\\\\]/onboarding)",
+      "Bash(npx tsc *)"
+    ]
+  }
+}
