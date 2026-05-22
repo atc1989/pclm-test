@@ -119,7 +119,7 @@ export default function ResultsPage() {
       </div>
 
       {/* Score hero */}
-      <div style={{ padding: "20px 24px 0", position: "relative" }}>
+      <div style={{ padding: "20px 24px 0", position: "relative", maxWidth: 576, marginLeft: "auto", marginRight: "auto" }}>
         <div ref={ambRef} style={{ position: "absolute", top: -20, left: "50%", transform: "translateX(-50%)", width: 320, height: 320, borderRadius: "50%", background: "radial-gradient(circle,rgba(212,168,64,.10) 0%,transparent 65%)", pointerEvents: "none", transition: "background 1.2s", zIndex: 0 }} />
         <div style={{ position: "relative", zIndex: 1, background: "#fff", borderRadius: 20, boxShadow: "0 12px 48px rgba(0,0,0,.28)", padding: "24px 20px 20px", textAlign: "center" }}>
           <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 5, padding: "4px 12px", borderRadius: 20, background: "rgba(12,16,23,.06)", fontSize: "clamp(18px,5.2vw,21px)", fontWeight: 600, color: "rgba(12,16,23,.60)", letterSpacing: ".04em", marginBottom: 16 }}>
@@ -150,7 +150,7 @@ export default function ResultsPage() {
       </div>
 
       {/* Summary */}
-      <div style={{ padding: "16px 24px 0" }}>
+      <div style={{ padding: "16px 24px 0", maxWidth: 576, marginLeft: "auto", marginRight: "auto" }}>
         <div style={{ fontSize: "clamp(18px,5.2vw,21px)", color: "rgba(255,255,255,.90)", lineHeight: 1.6 }}>{summary}</div>
       </div>
 
