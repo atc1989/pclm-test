@@ -83,6 +83,7 @@ export function DoctorOnboardingPage() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: doctorOnboardingStyles }} />
+      <div className="onboarding-page">
       <main className="doctor-onboarding-shell">
         {step === "welcome" && (
           <section className="onboarding-screen onboarding-welcome">
@@ -112,11 +113,11 @@ export function DoctorOnboardingPage() {
               </div>
             </div>
             <div className="bottom-actions an d5">
-              <Link className="btn-primary" href="/auth/login">
+              <Link className="btn-primary" href="/doctor/register">
                 Create Doctor Account
               </Link>
-              <a className="sub-link" href="/doctor">
-                Back to physician page
+              <a className="sub-link" href="/auth/login">
+                Already enrolled? Sign in
               </a>
             </div>
           </section>
@@ -279,6 +280,7 @@ export function DoctorOnboardingPage() {
           </section>
         )}
       </main>
+      </div>
     </>
   );
 }
@@ -290,6 +292,7 @@ function BrandHeader() {
         <ShieldIcon />
       </div>
       <span>GutGuard</span>
+      <a className="back-to-physician" href="/doctor">Back to physician page</a>
     </div>
   );
 }

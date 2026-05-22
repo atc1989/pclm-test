@@ -7,13 +7,19 @@ export const doctorOnboardingStyles = String.raw`
   --ease:cubic-bezier(.32,1,.68,1);--spring:cubic-bezier(.34,1.56,.64,1);
 }
 *{box-sizing:border-box}
-body{background:var(--lt2);font-family:var(--f)}
-.doctor-onboarding-shell{min-height:100vh;background:var(--lt);color:var(--d1);font-family:var(--f);width:100%}
+body{background:var(--bg);font-family:var(--f)}
+.onboarding-page{min-height:100dvh;background:var(--bg);display:flex;flex-direction:column;align-items:center;position:relative;overflow-x:hidden}
+.onboarding-page:before{content:'';position:fixed;inset:0;background-image:radial-gradient(circle,rgba(59,130,200,.04) 1px,transparent 1px);background-size:32px 32px;pointer-events:none;z-index:0}
+.onboarding-page:after{content:'';position:fixed;top:-80px;left:50%;transform:translateX(-50%);width:520px;height:520px;background:radial-gradient(circle,rgba(59,130,200,.07) 0%,transparent 70%);pointer-events:none;z-index:0}
+.doctor-onboarding-shell{width:100%;max-width:576px;min-height:100dvh;background:var(--bg);color:var(--d1);font-family:var(--f);position:relative;z-index:1}
+@media(min-width:640px){.doctor-onboarding-shell{margin:24px auto;min-height:calc(100dvh - 48px);border-radius:20px;overflow:hidden;border:1px solid rgba(59,130,200,.10)}}
 .onboarding-screen{min-height:100vh;min-height:100dvh}
 .onboarding-welcome{background:var(--bg);color:#fff;display:flex;flex-direction:column;position:relative;overflow:hidden}
 .onboarding-welcome:before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,rgba(59,130,200,.04) 1px,transparent 1px);background-size:32px 32px;pointer-events:none}
 .onboarding-welcome:after{content:'';position:absolute;top:-80px;left:50%;transform:translateX(-50%);width:360px;height:360px;background:radial-gradient(circle,rgba(59,130,200,.07) 0%,transparent 70%);pointer-events:none}
 .brand-header{display:flex;align-items:center;gap:10px;padding:22px 28px;position:relative;z-index:1}
+.back-to-physician{margin-left:auto;font-size:13px;font-weight:600;color:rgba(255,255,255,.38);text-decoration:none;transition:color .15s}
+.back-to-physician:hover{color:rgba(255,255,255,.65)}
 .brand-mark{width:30px;height:30px;border-radius:8px;background:var(--bl);display:flex;align-items:center;justify-content:center;color:#fff}
 .brand-header span{font-size:18px;font-weight:700}
 .welcome-body{flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 28px;position:relative;z-index:1}

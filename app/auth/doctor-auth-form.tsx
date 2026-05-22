@@ -1,127 +1,90 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+const isValidPH = (p: string) => /^09\d{9}$/.test(p);
+const toE164 = (p: string) => "+63" + p.slice(1);
+
+type Phase = "idle" | "sent" | "verified";
+
 export function DoctorAuthForm() {
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [viber, setViber] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [countdown, setCountdown] = useState(0);
+  const [canResend, setCanResend] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
+
+  // Countdown tick
+  useEffect(() => {
+    if (phase !== "sent" || countdown <= 0) return;
+    const t = setTimeout(() => {
+      setCountdown((c) => {
+        if (c <= 1) { setCanResend(true); return 0; }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [phase, countdown]);
+
+  const handleSendOTP = async () => {
+    setSending(true);
     setError(null);
 
-    try {
-      if (!email) {
-        setError("Email is required to sign in");
-        setLoading(false);
-        return;
-      }
+    // TODO: replace with real Supabase phone OTP when SMS provider is configured
+    await new Promise((r) => setTimeout(r, 600));
 
-      // Sign in with email/password
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password: phone, // Use phone as password for this flow
-      });
-
-      if (authError) {
-        setError(authError.message);
-        setLoading(false);
-        return;
-      }
-
-      if (data?.user) {
-        router.push("/doctor/dashboard");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign in failed");
-      setLoading(false);
-    }
+    setSending(false);
+    setPhase("sent");
+    setOtp("");
+    setCountdown(30);
+    setCanResend(false);
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleResend = () => {
+    setCanResend(false);
+    setOtp("");
+    setError(null);
+    handleSendOTP();
+  };
+
+  const handleVerify = async () => {
+    if (otp.length < 6) return;
+    setVerifying(true);
     setError(null);
 
-    try {
-      if (!email || !firstName || !lastName) {
-        setError("Please fill in all required fields");
-        setLoading(false);
-        return;
-      }
+    // OTP is mocked — any 6 digits accepted.
+    // Session is created via email+password derived from the phone number.
+    // TODO: replace with supabase.auth.verifyOtp when SMS provider is live.
+    const mockEmail = `${phone}@gutguard-dev.ph`;
+    const mockPassword = `gutguard_${phone}_dev`;
 
-      // Sign up user
-      const { data, error: authError } = await supabase.auth.signUp({
-        email,
-        password: phone, // Use phone as password for this flow
-        options: {
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-            mobile: phone,
-            role: "doctor",
-          },
-        },
-      });
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: mockEmail,
+      password: mockPassword,
+    });
 
-      if (authError) {
-        setError(authError.message);
-        setLoading(false);
-        return;
-      }
-
-      if (data?.user) {
-        // The auth trigger also creates this row, so keep this idempotent.
-        const { error: profileError } = await supabase.from("profiles").upsert({
-          id: data.user.id,
-          email,
-          first_name: firstName,
-          last_name: lastName,
-          mobile: phone,
-          role: "doctor",
-        }, {
-          onConflict: "id",
-        });
-
-        if (profileError) {
-          setError(profileError.message);
-          setLoading(false);
-          return;
-        }
-
-        // Create onboarding status
-        const { error: onboardingError } = await supabase
-          .from("onboarding_status")
-          .upsert({
-            doctor_id: data.user.id,
-            status: "draft",
-          }, {
-            onConflict: "doctor_id",
-            ignoreDuplicates: true,
-          });
-
-        if (onboardingError) {
-          console.error("Onboarding error:", onboardingError);
-        }
-
-        router.push("/doctor/onboarding");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign up failed");
-      setLoading(false);
+    if (!signInError && signInData.user) {
+      router.push("/doctor/dashboard");
+      router.refresh();
+      return;
     }
+
+    setNotFound(true);
+    setVerifying(false);
   };
+
+  const otpDisabled = phase === "idle";
+  const phoneDisabled = phase === "sent" && !canResend;
+  const sendDisabled = !isValidPH(phone) || sending || (phase === "sent" && !canResend);
 
   return (
     <div style={{
@@ -137,7 +100,7 @@ export function DoctorAuthForm() {
       <div style={{
         position: "absolute",
         inset: 0,
-        backgroundImage: "radial-gradient(circle, rgba(59, 130, 200, 0.04) 1px, transparent 1px)",
+        backgroundImage: "radial-gradient(circle, rgba(59,130,200,.04) 1px, transparent 1px)",
         backgroundSize: "32px 32px",
         pointerEvents: "none",
       }} />
@@ -150,7 +113,7 @@ export function DoctorAuthForm() {
         transform: "translateX(-50%)",
         width: "360px",
         height: "360px",
-        background: "radial-gradient(circle, rgba(59, 130, 200, 0.07) 0%, transparent 70%)",
+        background: "radial-gradient(circle, rgba(59,130,200,.07) 0%, transparent 70%)",
         pointerEvents: "none",
       }} />
 
@@ -166,334 +129,203 @@ export function DoctorAuthForm() {
         zIndex: 1,
       }}>
 
-        {/* Logo and title */}
-        <div style={{ textAlign: "center", marginBottom: "44px", animation: "fadeIn 0.5s ease-out" }}>
-          {/* Animated shield */}
-          <div style={{
-            position: "relative",
-            width: "72px",
-            height: "72px",
-            margin: "0 auto 20px",
-          }}>
+        {/* Logo */}
+        <div style={{ textAlign: "center", marginBottom: "44px", animation: "fadeUp .5s ease-out both" }}>
+          <div style={{ position: "relative", width: "72px", height: "72px", margin: "0 auto 20px" }}>
             <div style={{
-              position: "absolute",
-              inset: "-12px",
-              borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(59, 130, 200, 0.12) 0%, transparent 70%)",
+              position: "absolute", inset: "-12px", borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(59,130,200,.12) 0%, transparent 70%)",
               animation: "pulse 2s ease-in-out infinite",
             }} />
             <div style={{
-              width: "72px",
-              height: "72px",
-              borderRadius: "20px",
-              background: "linear-gradient(145deg, rgba(59, 130, 200, 0.12), rgba(59, 130, 200, 0.04))",
-              border: "1.5px solid rgba(59, 130, 200, 0.18)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              width: "72px", height: "72px", borderRadius: "20px",
+              background: "linear-gradient(145deg, rgba(59,130,200,.12), rgba(59,130,200,.04))",
+              border: "1.5px solid rgba(59,130,200,.18)",
+              display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3B82C8" strokeWidth="1.6">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
             </div>
           </div>
-
-          <div style={{
-            fontSize: "13px",
-            fontWeight: 700,
-            letterSpacing: "0.14em",
-            color: "rgba(255, 255, 255, 0.75)",
-            textTransform: "uppercase",
-            marginBottom: "10px",
-          }}>GutGuard</div>
-
-          <div style={{
-            fontSize: "clamp(26px, 6.8vw, 30px)",
-            fontWeight: 800,
-            color: "rgba(255, 255, 255, 0.92)",
-            letterSpacing: "-0.04em",
-            lineHeight: 1.1,
-          }}>
-            Practitioner<br />
-            Protocol Center
+          <div style={{ fontSize: "13px", fontWeight: 700, letterSpacing: ".14em", color: "rgba(255,255,255,.75)", textTransform: "uppercase", marginBottom: "10px" }}>GutGuard</div>
+          <div style={{ fontSize: "clamp(26px,6.8vw,30px)", fontWeight: 800, color: "rgba(255,255,255,.92)", letterSpacing: "-.04em", lineHeight: 1.1 }}>
+            Practitioner<br />Protocol Center
           </div>
         </div>
 
-        {/* Mode toggle */}
-        <div style={{
-          width: "100%",
-          maxWidth: "360px",
-          marginBottom: "20px",
-          animation: "fadeIn 0.5s ease-out 0.06s both",
-        }}>
-          <div style={{
-            display: "flex",
-            background: "rgba(255, 255, 255, 0.04)",
-            border: "1px solid rgba(255, 255, 255, 0.07)",
-            borderRadius: "12px",
-            padding: "3px",
-            gap: "3px",
-          }}>
-            <button
-              onClick={() => setMode("signin")}
-              style={{
-                flex: 1,
-                padding: "10px",
-                borderRadius: "8px",
-                border: "none",
-                fontSize: "14px",
-                fontWeight: 700,
-                fontFamily: "inherit",
-                cursor: "pointer",
-                background: mode === "signin" ? "rgba(255, 255, 255, 0.08)" : "none",
-                color: "#fff",
-                transition: "all 0.2s",
-              }}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => setMode("signup")}
-              style={{
-                flex: 1,
-                padding: "10px",
-                borderRadius: "8px",
-                border: "none",
-                fontSize: "14px",
-                fontWeight: 700,
-                fontFamily: "inherit",
-                cursor: "pointer",
-                background: mode === "signup" ? "rgba(255, 255, 255, 0.08)" : "none",
-                color: mode === "signup" ? "#fff" : "rgba(255, 255, 255, 0.62)",
-                transition: "all 0.2s",
-              }}
-            >
-              New Account
-            </button>
-          </div>
-        </div>
+        {/* Form card */}
+        <div style={{ width: "100%", maxWidth: "360px", animation: "fadeUp .5s ease-out .1s both" }}>
 
-        {/* Form */}
-        <form onSubmit={mode === "signin" ? handleSignIn : handleSignUp} style={{
-          width: "100%",
-          maxWidth: "360px",
-          animation: "fadeIn 0.5s ease-out 0.14s both",
-        }}>
-          {/* Mobile Number */}
-          <div style={{ marginBottom: "14px" }}>
-            <label style={{
-              display: "block",
-              fontSize: "13px",
-              fontWeight: 600,
-              color: "rgba(255, 255, 255, 0.58)",
-              marginBottom: "8px",
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-            }}>Mobile Number</label>
-            <input
-              type="tel"
-              placeholder="09XX XXX XXXX"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-              style={{
-                width: "100%",
-                padding: "15px 18px",
-                border: "1.5px solid rgba(255, 255, 255, 0.07)",
-                borderRadius: "14px",
-                fontFamily: "inherit",
-                fontSize: "16px",
-                color: "#fff",
-                background: "rgba(255, 255, 255, 0.04)",
-                outline: "none",
-                minHeight: "52px",
-                transition: "border-color 0.15s",
-              }}
-              onFocus={(e) => e.currentTarget.style.borderColor = "rgba(59, 130, 200, 0.40)"}
-              onBlur={(e) => e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.07)"}
-            />
+          {/* Heading */}
+          <div style={{ marginBottom: "24px" }}>
+            <div style={{ fontSize: "15px", fontWeight: 700, color: "rgba(255,255,255,.75)", marginBottom: "4px" }}>
+              {phase === "idle" ? "Sign in with mobile number" : `OTP sent to ${phone}`}
+            </div>
+            {phase === "sent" && (
+              <div style={{ fontSize: "13px", color: "rgba(255,255,255,.42)" }}>
+                Enter the 6-digit code from your SMS.
+              </div>
+            )}
           </div>
 
-          {/* Email */}
-          <div style={{ marginBottom: "14px" }}>
-            <label style={{
-              display: "block",
-              fontSize: "13px",
-              fontWeight: 600,
-              color: "rgba(255, 255, 255, 0.58)",
-              marginBottom: "8px",
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-            }}>
-              Email
-              <span style={{
-                color: "rgba(255, 255, 255, 0.72)",
-                fontWeight: 600,
-                fontSize: "11px",
-                letterSpacing: "0.04em",
-                marginLeft: "4px",
-              }}>
-                · {mode === "signin" ? "for confirmations" : "required"}
-              </span>
+          {/* Mobile number field */}
+          <div style={{ marginBottom: "12px" }}>
+            <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "rgba(255,255,255,.55)", marginBottom: "8px", letterSpacing: ".06em", textTransform: "uppercase" }}>
+              Mobile Number
             </label>
             <input
-              type="email"
-              placeholder="doctor@clinic.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required={mode === "signup"}
+              type="tel"
+              inputMode="numeric"
+              placeholder="09XX XXX XXXX"
+              value={phone}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, "").slice(0, 11);
+                setPhone(v);
+                setError(null);
+                setNotFound(false);
+              }}
+              disabled={phoneDisabled}
               style={{
                 width: "100%",
                 padding: "15px 18px",
-                border: "1.5px solid rgba(255, 255, 255, 0.07)",
+                border: `1.5px solid ${isValidPH(phone) ? "rgba(59,130,200,.35)" : "rgba(255,255,255,.07)"}`,
                 borderRadius: "14px",
                 fontFamily: "inherit",
                 fontSize: "16px",
-                color: "#fff",
-                background: "rgba(255, 255, 255, 0.04)",
+                color: phoneDisabled ? "rgba(255,255,255,.35)" : "#fff",
+                background: phoneDisabled ? "rgba(255,255,255,.02)" : "rgba(255,255,255,.04)",
                 outline: "none",
                 minHeight: "52px",
-                transition: "border-color 0.15s",
+                transition: "border-color .15s, opacity .15s",
+                letterSpacing: ".04em",
               }}
-              onFocus={(e) => e.currentTarget.style.borderColor = "rgba(59, 130, 200, 0.40)"}
-              onBlur={(e) => e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.07)"}
+              onFocus={(e) => { if (!phoneDisabled) e.currentTarget.style.borderColor = "rgba(59,130,200,.50)"; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = isValidPH(phone) ? "rgba(59,130,200,.35)" : "rgba(255,255,255,.07)"; }}
             />
           </div>
 
-          {/* Signup-only fields */}
-          {mode === "signup" && (
-            <>
-              <div style={{ marginBottom: "14px" }}>
-                <label style={{
-                  display: "block",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  color: "rgba(255, 255, 255, 0.58)",
-                  marginBottom: "8px",
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                }}>First Name</label>
-                <input
-                  type="text"
-                  placeholder="John"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  required
-                  style={{
-                    width: "100%",
-                    padding: "15px 18px",
-                    border: "1.5px solid rgba(255, 255, 255, 0.07)",
-                    borderRadius: "14px",
-                    fontFamily: "inherit",
-                    fontSize: "16px",
-                    color: "#fff",
-                    background: "rgba(255, 255, 255, 0.04)",
-                    outline: "none",
-                    minHeight: "52px",
-                    transition: "border-color 0.15s",
-                  }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = "rgba(59, 130, 200, 0.40)"}
-                  onBlur={(e) => e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.07)"}
-                />
-              </div>
+          {/* Send OTP button */}
+          <button
+            type="button"
+            onClick={handleSendOTP}
+            disabled={sendDisabled}
+            style={{
+              width: "100%",
+              padding: "14px 16px",
+              borderRadius: "14px",
+              border: "1.5px solid rgba(59,130,200,.28)",
+              fontSize: "15px",
+              fontWeight: 700,
+              fontFamily: "inherit",
+              background: sendDisabled ? "rgba(59,130,200,.06)" : "rgba(59,130,200,.12)",
+              color: sendDisabled ? "rgba(59,130,200,.38)" : "#3B82C8",
+              cursor: sendDisabled ? "not-allowed" : "pointer",
+              minHeight: "48px",
+              transition: "all .15s",
+              marginBottom: "20px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+            }}
+            onMouseDown={(e) => { if (!sendDisabled) e.currentTarget.style.transform = "scale(.97)"; }}
+            onMouseUp={(e) => { e.currentTarget.style.transform = ""; }}
+          >
+            {sending ? (
+              <>
+                <span style={{ width: 14, height: 14, border: "2px solid rgba(59,130,200,.35)", borderTopColor: "#3B82C8", borderRadius: "50%", display: "inline-block", animation: "spin .7s linear infinite" }} />
+                Sending…
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" />
+                </svg>
+                {phase === "sent" && canResend ? "Resend OTP" : "Send OTP"}
+              </>
+            )}
+          </button>
 
-              <div style={{ marginBottom: "14px" }}>
-                <label style={{
-                  display: "block",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  color: "rgba(255, 255, 255, 0.58)",
-                  marginBottom: "8px",
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                }}>Last Name</label>
-                <input
-                  type="text"
-                  placeholder="Doe"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  required
-                  style={{
-                    width: "100%",
-                    padding: "15px 18px",
-                    border: "1.5px solid rgba(255, 255, 255, 0.07)",
-                    borderRadius: "14px",
-                    fontFamily: "inherit",
-                    fontSize: "16px",
-                    color: "#fff",
-                    background: "rgba(255, 255, 255, 0.04)",
-                    outline: "none",
-                    minHeight: "52px",
-                    transition: "border-color 0.15s",
-                  }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = "rgba(59, 130, 200, 0.40)"}
-                  onBlur={(e) => e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.07)"}
-                />
-              </div>
+          {/* Divider */}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
+            <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,.07)" }} />
+            <span style={{ fontSize: "12px", color: "rgba(255,255,255,.28)", fontWeight: 600, letterSpacing: ".08em" }}>STEP 2</span>
+            <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,.07)" }} />
+          </div>
 
-              <div style={{ marginBottom: "20px" }}>
-                <label style={{
-                  display: "block",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  color: "rgba(255, 255, 255, 0.58)",
-                  marginBottom: "8px",
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                }}>
-                  Viber
-                  <span style={{
-                    color: "rgba(255, 255, 255, 0.72)",
-                    fontWeight: 600,
-                    fontSize: "11px",
-                  }}>
-                    · optional, for instant alerts
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="@yourViberName"
-                  value={viber}
-                  onChange={(e) => setViber(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "15px 18px",
-                    border: "1.5px solid rgba(255, 255, 255, 0.07)",
-                    borderRadius: "14px",
-                    fontFamily: "inherit",
-                    fontSize: "16px",
-                    color: "#fff",
-                    background: "rgba(255, 255, 255, 0.04)",
-                    outline: "none",
-                    minHeight: "52px",
-                    transition: "border-color 0.15s",
-                  }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = "rgba(59, 130, 200, 0.40)"}
-                  onBlur={(e) => e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.07)"}
-                />
-              </div>
-            </>
-          )}
+          {/* OTP field */}
+          <div style={{ marginBottom: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+              <label style={{ fontSize: "13px", fontWeight: 600, color: otpDisabled ? "rgba(255,255,255,.25)" : "rgba(255,255,255,.55)", letterSpacing: ".06em", textTransform: "uppercase" }}>
+                OTP Code
+              </label>
+              {phase === "sent" && !canResend && countdown > 0 && (
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "rgba(59,130,200,.70)", fontVariantNumeric: "tabular-nums" }}>
+                  {countdown}s
+                </span>
+              )}
+              {canResend && (
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  style={{ background: "none", border: "none", fontSize: "13px", fontWeight: 700, color: "#3B82C8", cursor: "pointer", padding: "0", fontFamily: "inherit" }}
+                >
+                  Resend
+                </button>
+              )}
+            </div>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="_ _ _ _ _ _"
+              value={otp}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                setOtp(v);
+                setError(null);
+              }}
+              disabled={otpDisabled}
+              autoComplete="one-time-code"
+              style={{
+                width: "100%",
+                padding: "15px 18px",
+                border: `1.5px solid ${!otpDisabled && otp.length === 6 ? "rgba(92,184,130,.35)" : "rgba(255,255,255,.07)"}`,
+                borderRadius: "14px",
+                fontFamily: "inherit",
+                fontSize: "22px",
+                fontWeight: 800,
+                letterSpacing: ".28em",
+                color: otpDisabled ? "rgba(255,255,255,.18)" : "#fff",
+                background: otpDisabled ? "rgba(255,255,255,.01)" : "rgba(255,255,255,.04)",
+                outline: "none",
+                minHeight: "58px",
+                transition: "border-color .15s",
+                textAlign: "center",
+              }}
+              onFocus={(e) => { if (!otpDisabled) e.currentTarget.style.borderColor = "rgba(59,130,200,.50)"; }}
+              onBlur={(e) => {
+                if (!otpDisabled) e.currentTarget.style.borderColor = otp.length === 6 ? "rgba(92,184,130,.35)" : "rgba(255,255,255,.07)";
+              }}
+            />
+          </div>
 
-          {/* Error message */}
+          {/* Error */}
           {error && (
             <div style={{
-              marginBottom: "16px",
-              padding: "12px 16px",
-              borderRadius: "12px",
-              background: "rgba(212, 32, 32, 0.1)",
-              border: "1px solid rgba(212, 32, 32, 0.2)",
-              fontSize: "14px",
-              color: "#D42020",
+              marginBottom: "16px", padding: "12px 16px", borderRadius: "12px",
+              background: "rgba(212,32,32,.10)", border: "1px solid rgba(212,32,32,.20)",
+              fontSize: "14px", color: "#D42020", lineHeight: 1.5,
             }}>
               {error}
             </div>
           )}
 
-          {/* Submit button */}
+          {/* Verify button */}
           <button
-            type="submit"
-            disabled={loading}
+            type="button"
+            onClick={handleVerify}
+            disabled={otp.length < 6 || otpDisabled || verifying}
             style={{
               width: "100%",
               padding: "16px",
@@ -501,79 +333,77 @@ export function DoctorAuthForm() {
               border: "none",
               fontSize: "17px",
               fontWeight: 700,
-              background: loading ? "rgba(59, 130, 200, 0.5)" : "#3B82C8",
+              background: (otp.length === 6 && !otpDisabled && !verifying)
+                ? "#3B82C8"
+                : "rgba(59,130,200,.30)",
               color: "#fff",
               fontFamily: "inherit",
               minHeight: "56px",
-              cursor: loading ? "not-allowed" : "pointer",
-              transition: "all 0.1s",
-              boxShadow: "0 4px 20px rgba(59, 130, 200, 0.25)",
+              cursor: (otp.length === 6 && !otpDisabled && !verifying) ? "pointer" : "not-allowed",
+              transition: "all .1s",
+              boxShadow: (otp.length === 6 && !otpDisabled)
+                ? "0 4px 20px rgba(59,130,200,.25)"
+                : "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
             }}
             onMouseDown={(e) => {
-              if (!loading) e.currentTarget.style.transform = "scale(0.97)";
+              if (otp.length === 6 && !verifying) e.currentTarget.style.transform = "scale(.97)";
             }}
-            onMouseUp={(e) => {
-              e.currentTarget.style.transform = "";
-            }}
+            onMouseUp={(e) => { e.currentTarget.style.transform = ""; }}
           >
-            {loading ? (mode === "signin" ? "Signing In..." : "Creating Account...") : (mode === "signin" ? "Sign In" : "Create Account")}
+            {verifying ? (
+              <>
+                <span style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,.35)", borderTopColor: "#fff", borderRadius: "50%", display: "inline-block", animation: "spin .7s linear infinite" }} />
+                Verifying…
+              </>
+            ) : (
+              <>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Verify &amp; Sign In
+              </>
+            )}
           </button>
-        </form>
+
+          {notFound && (
+            <div style={{ marginTop: "16px", textAlign: "center" }}>
+              <span style={{ fontSize: "13px", color: "rgba(255,255,255,.38)" }}>
+                No account found.{" "}
+              </span>
+              <a
+                href="/doctor/onboarding"
+                style={{ fontSize: "13px", fontWeight: 700, color: "#3B82C8", textDecoration: "none" }}
+              >
+                Activate portal →
+              </a>
+            </div>
+          )}
+
+        </div>
       </div>
 
-      {/* Bottom badges */}
-      <div style={{
-        padding: "0 clamp(16px, 5vw, 28px) 40px",
-        position: "relative",
-        zIndex: 1,
-        animation: "fadeIn 0.5s ease-out 0.3s both",
-      }}>
-        <div style={{
-          display: "flex",
-          justifyContent: "center",
-          marginTop: "16px",
-          gap: "8px",
-          flexWrap: "wrap",
-        }}>
-          {["SEC Registered", "FDA Notified", "LTO Licensed", "GLIS · IMSI v1.0"].map((badge) => (
-            <div key={badge} style={{
-              padding: "6px 12px",
-              borderRadius: "8px",
-              background: "rgba(255, 255, 255, 0.03)",
-              border: "1px solid rgba(255, 255, 255, 0.05)",
-              fontSize: "11px",
-              fontWeight: 700,
-              color: "rgba(255, 255, 255, 0.75)",
-              letterSpacing: "0.06em",
-            }}>
-              {badge}
-            </div>
+      {/* Footer */}
+      <div style={{ padding: "0 clamp(16px,5vw,28px) 40px", position: "relative", zIndex: 1, animation: "fadeUp .5s ease-out .3s both" }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: "8px", flexWrap: "wrap" }}>
+          {["SEC Registered", "FDA Notified", "LTO Licensed", "GLIS · IMSI v1.0"].map((b) => (
+            <div key={b} style={{
+              padding: "6px 12px", borderRadius: "8px",
+              background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.05)",
+              fontSize: "11px", fontWeight: 700, color: "rgba(255,255,255,.75)", letterSpacing: ".06em",
+            }}>{b}</div>
           ))}
         </div>
       </div>
 
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(14px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes pulse {
-          0%, 100% {
-            opacity: 0.4;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.7;
-            transform: scale(1.08);
-          }
-        }
-      `}</style>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pulse{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:.7;transform:scale(1.08)}}
+        @keyframes spin{to{transform:rotate(360deg)}}
+      ` }} />
     </div>
   );
 }

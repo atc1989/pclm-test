@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/supabase/hooks";
 import { useLogout } from "@/lib/supabase/use-logout";
 
@@ -34,7 +35,8 @@ type Request = {
   timeLeft: string;
 };
 
-type PortalView = "dashboard" | "redeem" | "confirm" | "receipt";
+type PortalView = "dashboard" | "detail" | "science" | "viber" | "redeem" | "confirm" | "receipt";
+type DetailTab = "summary" | "history";
 type RedeemMethod = "gcash" | "bank" | "clinic";
 
 const protocols: Record<ProtocolKey, { name: string; days: number; credits: number; price: string }> = {
@@ -221,7 +223,9 @@ const dashboardStyles = `
 .credits strong{display:block;margin-top:4px;font-size:25px;color:var(--doc-blue);letter-spacing:-.02em}
 .link-btn{border:0;background:transparent;color:var(--doc-blue);font-weight:850;font-size:13px;padding:0;min-height:auto}
 .urgent-pad{padding:0 24px;margin-top:16px;width:100%}
-.urgent-banner{display:flex;align-items:center;gap:14px;width:100%;min-width:0;padding:14px 16px;background:rgba(212,32,32,.06);border:1.5px solid rgba(212,32,32,.18);border-radius:16px;text-align:left}
+.urgent-banner{display:flex;align-items:center;gap:14px;width:100%;min-width:0;padding:14px 16px;background:rgba(212,32,32,.06);border:1.5px solid rgba(212,32,32,.18);border-radius:16px;text-align:left;cursor:pointer;transition:background .15s,border-color .15s,transform .12s,box-shadow .12s;-webkit-tap-highlight-color:transparent}
+.urgent-banner:hover{background:rgba(212,32,32,.10);border-color:rgba(212,32,32,.30);box-shadow:0 4px 16px rgba(212,32,32,.10)}
+.urgent-banner:active{transform:scale(.98);box-shadow:0 2px 6px rgba(212,32,32,.08)}
 .urgent-icon{width:40px;height:40px;border-radius:12px;background:rgba(212,32,32,.1);display:flex;align-items:center;justify-content:center;color:var(--doc-red);flex-shrink:0}
 .urgent-copy{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px}
 .urgent-title{display:block;width:100%;font-size:17px;font-weight:850;color:var(--doc-red);line-height:1.25;white-space:normal;overflow-wrap:anywhere}
@@ -363,9 +367,86 @@ const dashboardStyles = `
 .confetti-piece{position:absolute;top:0;width:8px;height:12px;border-radius:2px;opacity:0;animation:confettiDrop 1.55s cubic-bezier(.2,.8,.2,1) forwards;z-index:0}
 @media(prefers-reduced-motion:reduce){.earnings-toast.is-entering .earnings-inner,.earnings-toast.is-leaving .earnings-inner,.earnings-amount,.earnings-icon:after,.redeem-screen,.redeem-balance,.redeem-peso,.redeem-stat,.redeem-list,.confirm-card,.receipt-screen,.receipt-check,.receipt-amount,.receipt-body,.confetti-piece{animation:none}}
 @media(max-width:520px){.doctor-portal{padding-top:92px}.doctor-portal.no-toast{padding-top:0}.doctor-name{display:none}.doctor-shell{box-shadow:none}.hero-count strong{font-size:48px}.utilities{gap:10px;justify-content:space-between}.utility-btn{font-size:14px}.detail-grid{grid-template-columns:1fr}.earnings-inner{padding:14px 15px}.earnings-amount{font-size:24px}.earnings-sub{font-size:12px}.earnings-view{padding:8px 12px}.redeem-peso,.receipt-amount{font-size:42px}.quick-amounts{flex-wrap:wrap}.quick-amounts button{min-width:31%}}
+/* ── Patient Detail Screen ── */
+.detail-screen{background:var(--doc-lt);min-height:100vh;min-height:100dvh}
+.detail-sticky-nav{position:sticky;top:0;z-index:10;background:rgba(243,242,239,.97);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.detail-nav-row{padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.detail-score-strip{padding:2px 24px 8px;font-size:14px;color:var(--doc-d3)}
+.detail-tab-bar{display:flex;padding:0 24px;gap:0;border-bottom:1.5px solid var(--doc-lt2)}
+.detail-tab{flex:1;padding:12px 0;border:none;background:none;font-size:16px;font-weight:850;color:var(--doc-d4);border-bottom:2.5px solid transparent;font-family:var(--doc-font);cursor:pointer;transition:color .15s,border-color .15s}
+.detail-tab.on{color:var(--doc-blue);border-bottom-color:var(--doc-blue)}
+.detail-tab-body{padding:16px 24px 100px}
+.detail-sticky-action{position:fixed;bottom:0;left:0;right:0;z-index:20;background:rgba(243,242,239,.97);border-top:1px solid var(--doc-lt2);padding:12px 24px calc(12px + env(safe-area-inset-bottom,0px)) 24px;max-width:720px;margin:0 auto}
+.history-event{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--doc-lt2)}
+.history-event:last-child{border-bottom:0}
+.history-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:5px}
+/* ── Science Screen ── */
+.science-screen{background:var(--doc-lt);min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+.science-dark-zone{background:var(--doc-bg);padding:clamp(16px,5vw,28px) 24px 32px}
+.science-section-label{font-size:11px;font-weight:850;letter-spacing:.14em;text-transform:uppercase;margin-bottom:20px}
+.science-card{border-radius:20px;overflow:hidden;margin-bottom:10px}
+.science-card-header{padding:16px 22px;display:flex;align-items:center;gap:10px}
+.science-card-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.science-card-tag{font-size:12px;font-weight:850;letter-spacing:.12em;text-transform:uppercase;flex:1}
+.science-card-version{font-size:11px;font-weight:600;color:rgba(255,255,255,.55);letter-spacing:.04em}
+.science-card-body{padding:clamp(12px,4vw,20px) 22px}
+.science-card-title{font-size:18px;font-weight:700;color:#fff;letter-spacing:-.02em;line-height:1.2;margin-bottom:12px}
+.science-card-desc{font-size:14px;color:rgba(255,255,255,.75);line-height:1.75;margin-bottom:14px}
+.science-blockquote{padding:16px 18px;background:rgba(0,0,0,.20);border-radius:0 14px 14px 0;margin-bottom:14px}
+.science-blockquote-title{font-size:15px;font-weight:700;color:rgba(255,255,255,.80);line-height:1.5;margin-bottom:6px}
+.science-blockquote-desc{font-size:13px;color:rgba(255,255,255,.68);line-height:1.6}
+.science-legal{display:flex;align-items:flex-start;gap:8px;padding:12px 14px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid rgba(255,255,255,.06)}
+.science-legal-text{font-size:13px;font-weight:500;color:rgba(255,255,255,.62);line-height:1.55}
+.science-connector{display:flex;justify-content:center;padding:6px 0}
+.science-body{padding:clamp(12px,4vw,20px) 20px 40px;flex:1}
+.science-body-label{font-size:11px;font-weight:850;letter-spacing:.14em;color:var(--doc-d4);text-transform:uppercase;margin:20px 0 12px;padding:0 4px}
+.science-body-label:first-child{margin-top:0}
+.science-white-card{background:var(--doc-white);border-radius:16px;padding:22px;margin-bottom:12px;border:1px solid var(--doc-lt2)}
+.science-white-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.science-icon{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.science-card-h{font-size:16px;font-weight:700;color:var(--doc-d1)}
+.science-card-subh{font-size:13px;color:var(--doc-d3)}
+.science-domain-box{padding:14px 16px;border-radius:12px;margin-bottom:10px}
+.science-domain-box:last-child{margin-bottom:0}
+.science-domain-label{font-size:13px;font-weight:850;letter-spacing:.06em;margin-bottom:10px}
+.science-pill-row{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+.science-pill{padding:3px 8px;border-radius:8px;background:var(--doc-lt);font-size:12px;color:var(--doc-d3)}
+.science-formula{font-size:13px;color:var(--doc-d4);font-family:monospace}
+.science-score-band{padding:7px 14px;border-radius:8px;font-size:14px;font-weight:850;display:inline-block}
+.science-tier-row{padding:11px 0;border-bottom:1px solid var(--doc-lt2)}
+.science-tier-row:last-child{border-bottom:0}
+.science-red-flags{padding:14px 16px;border-radius:12px;background:rgba(212,32,32,.04);border:1px solid rgba(212,32,32,.08)}
+.science-shield-note{display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--doc-bg);border-radius:12px}
+.science-step-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--doc-lt2)}
+.science-step-row:last-child{border-bottom:0}
+.science-step-num{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:900}
+.science-ref-anchor{padding:18px 20px;background:rgba(59,130,200,.03);border-bottom:2px solid var(--doc-blue)}
+.science-ref-row{padding:14px 20px;border-bottom:1px solid var(--doc-lt2)}
+.science-ref-row:last-child{border-bottom:0}
+.science-rules{background:var(--doc-white);border-radius:16px;padding:22px;margin-bottom:12px;border:1px solid var(--doc-lt2)}
+.science-rule-label{font-size:12px;font-weight:850;letter-spacing:.06em;margin-bottom:6px}
+.science-rule-text{font-size:14px;color:var(--doc-d2);line-height:1.75;margin-bottom:14px}
+.science-rule-text:last-child{margin-bottom:0}
+/* ── Viber Screen ── */
+.viber-screen{background:var(--doc-lt);min-height:100vh;min-height:100dvh}
+.viber-step-num{width:32px;height:32px;border-radius:50%;background:var(--doc-blue);color:#fff;font:900 14px var(--doc-font);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.viber-code-block{background:var(--doc-bg);border-radius:14px;padding:18px 22px;text-align:center;margin:12px 0;font:900 20px/1 var(--doc-font);color:var(--doc-blue);letter-spacing:.08em;border:1px solid rgba(59,130,200,.15)}
+.viber-msg-preview{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px}
+.viber-verified{background:rgba(92,184,130,.08);border:1px solid rgba(92,184,130,.20);border-radius:16px;padding:clamp(12px,4vw,20px);display:flex;align-items:center;gap:14px}
+.viber-channel-card{background:rgba(59,130,200,.04);border:1px solid rgba(59,130,200,.10);border-radius:16px;padding:18px 20px;margin-bottom:14px}
+/* ── Request card decline ── */
+@keyframes declineSlide{from{opacity:0;max-height:0}to{opacity:1;max-height:200px}}
+.decline-reasons{overflow:hidden;animation:declineSlide .22s ease both}
+.reason-chip{padding:7px 13px;border-radius:10px;border:1.5px solid var(--doc-lt3);background:var(--doc-white);color:var(--doc-d3);font-size:13px;font-weight:750;cursor:pointer;font-family:var(--doc-font);transition:all .15s;display:inline-block;margin:0 5px 5px 0}
+.reason-chip.on{border-color:var(--doc-red);background:rgba(212,32,32,.05);color:var(--doc-red)}
+.req-accept-btn{width:100%;min-height:52px;border-radius:14px;border:none;font-size:16px;font-weight:850;font-family:var(--doc-font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .1s,box-shadow .1s;background:linear-gradient(135deg,var(--doc-green),#3fa861);color:#fff;box-shadow:0 4px 18px rgba(92,184,130,.32)}
+.req-accept-btn:active{transform:scale(.97)}
+.req-decline-text{background:none;border:none;font-size:13px;font-weight:700;color:var(--doc-d4);font-family:var(--doc-font);cursor:pointer;padding:4px 0;transition:color .15s}
+.req-decline-text:hover{color:var(--doc-red)}
 `;
 
 export function DoctorDashboardContent() {
+  const router = useRouter();
   const { user, profile, loading } = useAuth();
   const { logout } = useLogout();
   const [query, setQuery] = useState("");
@@ -375,6 +456,8 @@ export function DoctorDashboardContent() {
   const [isEarningsLeaving, setIsEarningsLeaving] = useState(false);
   const [animatedEarnings, setAnimatedEarnings] = useState(0);
   const [portalView, setPortalView] = useState<PortalView>("dashboard");
+  const [detailTab, setDetailTab] = useState<DetailTab>("summary");
+  const [viberConnected, setViberConnected] = useState(false);
   const [redeemMethod, setRedeemMethod] = useState<RedeemMethod>("gcash");
   const [redeemAmount, setRedeemAmount] = useState(5000);
   const [receiptReference, setReceiptReference] = useState("GG-284731");
@@ -431,6 +514,17 @@ export function DoctorDashboardContent() {
   const openRedeem = () => {
     setRedeemAmount(Math.min(5000, availableCredits));
     setPortalView("redeem");
+  };
+
+  const openDetail = (id: number) => {
+    const patient = patients.find((p) => p.id === id);
+    if (patient?.status === "review") {
+      router.push(`/doctor/medicalreview?id=${id}`);
+      return;
+    }
+    setSelectedPatientId(id);
+    setDetailTab("summary");
+    setPortalView("detail");
   };
 
   const reviewRedeem = () => {
@@ -530,6 +624,28 @@ export function DoctorDashboardContent() {
           />
         ) : null}
 
+        {portalView === "detail" && selectedPatient ? (
+          <PatientDetailScreen
+            patient={selectedPatient}
+            email={user?.email ?? profile?.email ?? ""}
+            tab={detailTab}
+            onTabChange={setDetailTab}
+            onBack={() => setPortalView("dashboard")}
+          />
+        ) : null}
+
+        {portalView === "science" ? (
+          <SciencePage onBack={() => setPortalView("dashboard")} />
+        ) : null}
+
+        {portalView === "viber" ? (
+          <ViberPage
+            connected={viberConnected}
+            onConnect={() => setViberConnected(true)}
+            onBack={() => setPortalView("dashboard")}
+          />
+        ) : null}
+
         {portalView === "dashboard" ? (
         <>
         <header className="doctor-header">
@@ -583,10 +699,10 @@ export function DoctorDashboardContent() {
 
           {reviewPatients.length ? (
             <div className="urgent-pad">
-              <button className="urgent-banner" type="button" onClick={() => setSelectedPatientId(reviewPatients[0].id)}>
+              <button className="urgent-banner" type="button" onClick={() => router.push(`/doctor/medicalreview?id=${reviewPatients[0].id}`)}>
                 <span className="urgent-icon"><AlertIcon /></span>
                 <span className="urgent-copy">
-                  <span className="urgent-title">{reviewPatients.length} patient needs medical review</span>
+                  <span className="urgent-title">{reviewPatients.length} patient{reviewPatients.length > 1 ? "s" : ""} need{reviewPatients.length === 1 ? "s" : ""} medical review</span>
                   <span className="urgent-sub">{reviewPatients.map((patient) => patient.name.split(" ")[0]).join(", ")}</span>
                 </span>
                 <ChevronIcon />
@@ -627,9 +743,9 @@ export function DoctorDashboardContent() {
                 key={patient.id}
                 tone="red"
                 name={patient.name}
-                sub={`${patient.age}${patient.sex} - GLIS ${patient.score} - ${protocols[patient.protocol].name}`}
-                badge="Review"
-                onClick={() => setSelectedPatientId(patient.id)}
+                sub={`${patient.age}${patient.sex} · GLIS ${patient.score} · ${protocols[patient.protocol].name}`}
+                badge="Review →"
+                onClick={() => router.push(`/doctor/medicalreview?id=${patient.id}`)}
               />
             ))}
             {patients.filter((patient) => patient.status === "trial").map((patient) => (
@@ -677,8 +793,8 @@ export function DoctorDashboardContent() {
                 <PatientCard
                   key={patient.id}
                   patient={patient}
-                  selected={selectedPatient?.id === patient.id}
-                  onOpen={() => setSelectedPatientId(patient.id)}
+                  selected={false}
+                  onOpen={() => openDetail(patient.id)}
                 />
               ))
             ) : (
@@ -686,11 +802,11 @@ export function DoctorDashboardContent() {
             )}
           </section>
 
-          {selectedPatient ? <PatientDetail patient={selectedPatient} email={user?.email ?? profile?.email ?? ""} /> : null}
-
           <div className="utilities">
-            <button className="utility-btn" type="button"><BookIcon /> Protocol Science</button>
-            <button className="utility-btn" type="button"><MessageIcon /> Notifications</button>
+            <button className="utility-btn" type="button" onClick={() => setPortalView("science")}><BookIcon /> Protocol Science</button>
+            <button className="utility-btn" type="button" onClick={() => setPortalView("viber")}>
+              <MessageIcon /> Notifications{viberConnected ? <span style={{ color: "var(--doc-green)", marginLeft: 4 }}>✓</span> : null}
+            </button>
             <button className="utility-btn" type="button"><ShareIcon /> Share Link</button>
           </div>
 
@@ -1072,7 +1188,27 @@ function ReceiptRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+const DECLINE_REASONS = ["Not appropriate", "Protocol mismatch", "At capacity", "Duplicate"];
+
 function RequestCard({ request }: { request: Request }) {
+  const [accepted, setAccepted] = useState(false);
+  const [declining, setDeclining] = useState(false);
+  const [reason, setReason] = useState("");
+  const [declined, setDeclined] = useState(false);
+
+  if (accepted) {
+    return (
+      <div className="request-card" style={{ borderLeft: "3px solid var(--doc-green)" }}>
+        <div style={{ padding: "14px 0 2px", display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(92,184,130,.15)", border: "1px solid rgba(92,184,130,.30)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--doc-green)", flexShrink: 0 }}><CheckIcon size={14} /></span>
+          <span style={{ fontSize: 15, fontWeight: 750, color: "var(--doc-green)" }}>{request.name} accepted</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (declined) return null;
+
   return (
     <div className="request-card">
       <div className="request-top">
@@ -1083,13 +1219,37 @@ function RequestCard({ request }: { request: Request }) {
             <span className="badge" style={{ color: "var(--doc-blue)", background: "rgba(59,130,200,.10)" }}>{request.timeLeft}</span>
           </div>
           <div className="request-meta">
-            {request.age}{request.sex} - {protocols[request.protocol].name} Protocol - {request.source}
+            {request.age}{request.sex} · {protocols[request.protocol].name} Protocol · {request.source}
           </div>
         </div>
       </div>
-      <div className="request-actions">
-        <button className="primary-small" type="button">Accept Patient</button>
-        <button className="secondary-small" type="button">Decline</button>
+      <div style={{ marginTop: 12 }}>
+        <button className="req-accept-btn" type="button" onClick={() => setAccepted(true)}>
+          <CheckIcon size={16} /> Accept Patient
+        </button>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0 0" }}>
+          <button className="req-decline-text" type="button" onClick={() => setDeclining((v) => !v)}>
+            {declining ? "Cancel" : "Decline"}
+          </button>
+          {declining && reason ? (
+            <button
+              type="button"
+              style={{ background: "none", border: "1px solid var(--doc-red)", borderRadius: 8, color: "var(--doc-red)", fontSize: 13, fontWeight: 750, padding: "5px 12px", cursor: "pointer", fontFamily: "var(--doc-font)" }}
+              onClick={() => setDeclined(true)}
+            >
+              Confirm decline
+            </button>
+          ) : null}
+        </div>
+        {declining ? (
+          <div className="decline-reasons">
+            <div style={{ paddingTop: 8 }}>
+              {DECLINE_REASONS.map((r) => (
+                <button key={r} className={`reason-chip${reason === r ? " on" : ""}`} type="button" onClick={() => setReason(r === reason ? "" : r)}>{r}</button>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -1422,11 +1582,436 @@ function BankIcon() {
   );
 }
 
-function CheckIcon() {
+function CheckIcon({ size = 38 }: { size?: number }) {
+  const scale = size / 38;
   return (
-    <svg width="38" height="38" viewBox="0 0 36 36" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" stroke="currentColor" strokeWidth={3.5 / scale} strokeLinecap="round" strokeLinejoin="round">
       <polyline points="7 19 15 27 29 11" />
     </svg>
+  );
+}
+
+function PatientDetailScreen({
+  patient,
+  email,
+  tab,
+  onTabChange,
+  onBack,
+}: {
+  patient: Patient;
+  email: string;
+  tab: DetailTab;
+  onTabChange: (t: DetailTab) => void;
+  onBack: () => void;
+}) {
+  const protocol = protocols[patient.protocol];
+  const drop = patient.baseline ? patient.baseline - patient.score : 0;
+  const action = getPatientAction(patient);
+
+  const history = [
+    { label: patient.lastEvent, date: patient.scanDate, color: drop > 0 ? "var(--doc-green)" : "var(--doc-blue)" },
+    { label: `${protocol.name} Protocol — Day ${patient.daysOn}`, date: patient.scanDate, color: "var(--doc-blue)" },
+    { label: `Lab: ${patient.lab}`, date: patient.scanDate, color: "var(--doc-d3)" },
+  ];
+
+  return (
+    <div className="detail-screen">
+      <div className="detail-sticky-nav">
+        <div className="detail-nav-row">
+          <button onClick={onBack} style={{ background: "none", border: "none", fontSize: 16, fontWeight: 750, color: "var(--doc-d3)", padding: "8px 0", cursor: "pointer" }}>← Back</button>
+          <div style={{ fontSize: 16, fontWeight: 850, color: "var(--doc-d1)" }}>{patient.name}</div>
+          <div style={{ width: 48 }} />
+        </div>
+        <div className="detail-score-strip">
+          GLIS {patient.score}{drop > 0 ? ` · ${drop} pt improvement` : ""} · {patient.age}{patient.sex}
+        </div>
+        <div className="detail-tab-bar">
+          <button className={`detail-tab${tab === "summary" ? " on" : ""}`} type="button" onClick={() => onTabChange("summary")}>Summary</button>
+          <button className={`detail-tab${tab === "history" ? " on" : ""}`} type="button" onClick={() => onTabChange("history")}>History</button>
+        </div>
+      </div>
+
+      {tab === "summary" ? (
+        <div className="detail-tab-body">
+          <div className="detail-panel">
+            <div className="detail-head">
+              <div>
+                <h2 id="patient-detail-heading">{patient.name}</h2>
+                <p>{patient.age}{patient.sex} · {patient.lab}</p>
+              </div>
+              <ScoreRing score={patient.score} size={62} />
+            </div>
+            <p className="detail-note">{patient.note}</p>
+            <div className="detail-grid">
+              <DetailCell label="Protocol" value={`${protocol.name} · ${protocol.days} days`} />
+              <DetailCell label="Credits" value={formatNumber(protocol.credits)} />
+              <DetailCell label="Latest Scan" value={patient.scanDate} />
+              <DetailCell label="Progress" value={drop > 0 ? `${drop} point improvement` : patient.lastEvent} />
+              <DetailCell label="Symptoms" value={patient.symptoms} />
+              <DetailCell label="Doctor Email" value={email || "Not provided"} />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="detail-tab-body">
+          <div style={{ background: "var(--doc-white)", borderRadius: 16, padding: "0 20px", border: "1px solid var(--doc-lt2)" }}>
+            {history.map((event, i) => (
+              <div className="history-event" key={i}>
+                <div className="history-dot" style={{ background: event.color }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 15, fontWeight: 750, color: "var(--doc-d1)", lineHeight: 1.35 }}>{event.label}</div>
+                  <div style={{ fontSize: 13, color: "var(--doc-d3)", marginTop: 3 }}>{event.date}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="detail-sticky-action">
+        <button
+          type="button"
+          style={{ width: "100%", minHeight: 52, border: `1px solid ${action.color}33`, borderRadius: 14, background: "transparent", color: action.color, fontSize: 16, fontWeight: 850, fontFamily: "var(--doc-font)", cursor: "pointer" }}
+        >
+          {action.label}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SciencePage({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="science-screen">
+      <div className="detail-sticky-nav">
+        <div className="detail-nav-row">
+          <button onClick={onBack} style={{ background: "none", border: "none", fontSize: 15, fontWeight: 750, color: "var(--doc-d3)", padding: "8px 0", cursor: "pointer", minHeight: 44 }}>← Back</button>
+          <div style={{ fontSize: 16, fontWeight: 850, color: "var(--doc-d1)" }}>Protocol Science</div>
+          <div style={{ width: 60 }} />
+        </div>
+      </div>
+
+      <div className="science-dark-zone">
+        <div className="science-section-label" style={{ color: "rgba(255,255,255,.50)" }}>Clinical Reference</div>
+
+        {/* BioScan */}
+        <div className="science-card" style={{ border: "1px solid rgba(59,130,200,.18)" }}>
+          <div className="science-card-header" style={{ background: "rgba(59,130,200,.14)" }}>
+            <div className="science-card-dot" style={{ background: "var(--doc-blue)" }} />
+            <div className="science-card-tag" style={{ color: "rgba(59,130,200,.90)" }}>BioScan</div>
+            <div className="science-card-version">GLIS · IMSI v1.0</div>
+          </div>
+          <div className="science-card-body" style={{ background: "rgba(59,130,200,.05)" }}>
+            <div className="science-card-title">Inflammatory and metabolic<br />pattern scoring</div>
+            <div className="science-card-desc">Computes a 0–100 GLIS score from your patient's lab panel using the v1.3 methodology — targeting <em>inflammaging</em> across three biological domains: inflammatory (hs-CRP, NLR), metabolic (HbA1c), and organ function (ALT, eGFR).</div>
+            <div style={{ padding: "12px 16px", background: "rgba(255,255,255,.04)", borderLeft: "2px solid rgba(59,130,200,.40)", borderRadius: "0 8px 8px 0", marginBottom: 18 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.55)", lineHeight: 1.6 }}>The gut drives systemic inflammation. BioScan scores the measurable consequence, not the cause.</div>
+            </div>
+            <div className="science-blockquote" style={{ borderLeft: "3px solid var(--doc-blue)" }}>
+              <div className="science-blockquote-title">The score is a clinical reference, not a directive.</div>
+              <div className="science-blockquote-desc">You review the score, apply your clinical judgment, and determine the appropriate next step for your patient.</div>
+            </div>
+            <div className="science-legal">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.30)" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div className="science-legal-text">For monitoring purposes only. IMSI v1.0 does not diagnose, prescribe, or replace clinical evaluation.</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Connector */}
+        <div className="science-connector">
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <div style={{ width: 1, height: 10, background: "rgba(255,255,255,.12)" }} />
+            <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M5 6L0 0h10L5 6z" fill="rgba(255,255,255,.18)"/></svg>
+          </div>
+        </div>
+
+        {/* Lifestyle Protocol */}
+        <div className="science-card" style={{ border: "1px solid rgba(92,184,130,.18)" }}>
+          <div className="science-card-header" style={{ background: "rgba(92,184,130,.14)" }}>
+            <div className="science-card-dot" style={{ background: "var(--doc-green)" }} />
+            <div className="science-card-tag" style={{ color: "rgba(92,184,130,.90)" }}>Lifestyle Protocol</div>
+            <div className="science-card-version">Pre→Pro→Post Synbiotic</div>
+          </div>
+          <div className="science-card-body" style={{ background: "rgba(92,184,130,.05)" }}>
+            <div className="science-card-title">A structured synbiotic regimen,<br />guided by your clinical assessment</div>
+            <div className="science-card-desc">Four protocol tiers — Trial, Start, Grow, Power — each corresponding to a GLIS range. You select the tier appropriate for your patient. The portal documents your decision. 30 days per cycle. Re-scored at completion.</div>
+            <div className="science-blockquote" style={{ borderLeft: "3px solid var(--doc-green)" }}>
+              <div className="science-blockquote-title">Your decision is on record.</div>
+              <div className="science-blockquote-desc">The portal logs your tier selection as a clinical decision — not an algorithm recommendation.</div>
+            </div>
+            <div className="science-legal">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.30)" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div className="science-legal-text">GutGuard Lifestyle Protocol is a dietary supplement. Not a treatment for any diagnosed condition.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="science-body">
+        <div className="science-body-label">Scoring Model</div>
+
+        {/* GLIS Identity */}
+        <div className="science-white-card">
+          <div className="science-white-head">
+            <div className="science-icon" style={{ background: "rgba(59,130,200,.07)" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--doc-blue)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+            <div><div className="science-card-h">GLIS · IMSI v1.0</div><div className="science-card-subh">Inflammatory–Metabolic Markers Index</div></div>
+          </div>
+          <div style={{ fontSize: 15, color: "var(--doc-d2)", lineHeight: 1.65, marginBottom: 14 }}>A composite biomarker-based index that estimates inflammatory and metabolic burden using routine laboratory markers, designed for monitoring trends and supporting clinical interpretation.</div>
+          <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--doc-lt)", fontSize: 14, color: "var(--doc-d3)", lineHeight: 1.5 }}>
+            Patient-facing: <strong style={{ color: "var(--doc-d1)" }}>Optimal / Good / Pay Attention / Take Action</strong><br />
+            Brand: <strong style={{ color: "var(--doc-d1)" }}>GutGuard GLIS (Gut-Lifestyle Inflammation Score)</strong>
+          </div>
+        </div>
+
+        {/* Dual Domain */}
+        <div className="science-white-card">
+          <div className="science-white-head">
+            <div className="science-icon" style={{ background: "rgba(204,110,72,.07)" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--doc-orange)" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+            <div className="science-card-h">Dual-Domain Model</div>
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 750, color: "var(--doc-d2)", marginBottom: 14 }}>IMSI = Inflammatory Domain (50%) + Metabolic Domain (50%)</div>
+          <div className="science-domain-box" style={{ background: "rgba(212,32,32,.03)", border: "1px solid rgba(212,32,32,.07)" }}>
+            <div className="science-domain-label" style={{ color: "var(--doc-red)" }}>INFLAMMATORY DOMAIN (50%)</div>
+            <div style={{ fontSize: 13, fontWeight: 750, color: "var(--doc-d3)", marginBottom: 5 }}>hs-CRP (Primary anchor)</div>
+            <div className="science-pill-row">
+              {["<1.0 = 0pts", "1–3 = 10pts", "3–5 = 15pts", ">5 = 20pts"].map((v) => <div key={v} className="science-pill">{v}</div>)}
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 750, color: "var(--doc-d3)", marginBottom: 5 }}>NLR (Immune-inflammatory balance)</div>
+            <div className="science-pill-row">
+              {["<2.0 = 0pts", "2–3 = 8pts", "3–5 = 15pts", ">5 = 20pts"].map((v) => <div key={v} className="science-pill">{v}</div>)}
+            </div>
+            <div className="science-formula">Score = (CRP pts + NLR pts) / 40 × 50</div>
+          </div>
+          <div className="science-domain-box" style={{ background: "rgba(212,168,64,.03)", border: "1px solid rgba(212,168,64,.08)" }}>
+            <div className="science-domain-label" style={{ color: "var(--doc-gold)" }}>METABOLIC DOMAIN (50%)</div>
+            <div style={{ fontSize: 13, fontWeight: 750, color: "var(--doc-d3)", marginBottom: 4 }}>Core: Glucose (0–18) · Triglycerides (0–18) · HDL (0–12) · TyG Index (0–20)</div>
+            <div style={{ fontSize: 13, fontWeight: 750, color: "var(--doc-d3)", marginBottom: 8 }}>Modifier: ALT (0–10)</div>
+            <div className="science-formula" style={{ marginBottom: 4 }}>TyG = ln((TG × Glucose) / 2)</div>
+            <div className="science-formula">Score = (Glu + TG + HDL + TyG + ALT) / 78 × 50</div>
+          </div>
+        </div>
+
+        {/* Interpretation & Safety */}
+        <div className="science-white-card">
+          <div className="science-white-head">
+            <div className="science-icon" style={{ background: "rgba(59,130,200,.07)" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--doc-blue)" strokeWidth="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></div>
+            <div className="science-card-h">Interpretation &amp; Safety</div>
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 850, color: "var(--doc-d4)", letterSpacing: ".08em", marginBottom: 10 }}>SCORE BANDS</div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
+            <div className="science-score-band" style={{ background: "rgba(92,184,130,.08)", color: "var(--doc-green)" }}>0–25 Optimal</div>
+            <div className="science-score-band" style={{ background: "rgba(212,168,64,.08)", color: "var(--doc-gold)" }}>25–50 Mild</div>
+            <div className="science-score-band" style={{ background: "rgba(204,110,72,.08)", color: "var(--doc-orange)" }}>50–75 Moderate</div>
+            <div className="science-score-band" style={{ background: "rgba(212,32,32,.08)", color: "var(--doc-red)" }}>75–100 High</div>
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 850, color: "var(--doc-d4)", letterSpacing: ".08em", marginBottom: 10 }}>CONFIDENCE TIERS</div>
+          {[
+            { tier: "Tier A — High confidence", desc: "All required markers: hs-CRP, CBC→NLR, Glucose, TG, HDL, ALT" },
+            { tier: "Tier B — Moderate", desc: "Missing 1–2 markers. Display: Moderate confidence due to incomplete data" },
+            { tier: "Tier C — Low", desc: "<50% markers present. Display: Preliminary estimate only" },
+          ].map(({ tier, desc }) => (
+            <div key={tier} className="science-tier-row">
+              <div style={{ fontSize: 14, fontWeight: 750, color: "var(--doc-d1)" }}>{tier}</div>
+              <div style={{ fontSize: 13, color: "var(--doc-d3)", marginTop: 2 }}>{desc}</div>
+            </div>
+          ))}
+          <div style={{ fontSize: 12, fontWeight: 850, color: "var(--doc-d4)", letterSpacing: ".08em", margin: "16px 0 10px" }}>RED FLAGS — IMMEDIATE REVIEW</div>
+          <div className="science-red-flags">
+            <div style={{ fontSize: 14, color: "var(--doc-d2)", lineHeight: 1.65, marginBottom: 6 }}>Triggers: <strong style={{ color: "var(--doc-red)" }}>hs-CRP &gt;10 · Glucose &gt;180 · ALT &gt;100 · NLR &gt;8</strong></div>
+            <div style={{ fontSize: 14, color: "var(--doc-d2)", lineHeight: 1.65 }}>Action: Disable auto protocol · Force doctor review · Display: ⚠️ Medical Review Required</div>
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 850, color: "var(--doc-d4)", letterSpacing: ".08em", margin: "16px 0 10px" }}>PROTOCOL MAPPING</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+            {["0–25 → Maintenance", "25–50 → Start", "50–75 → Grow", "75–100 → Power"].map((v) => (
+              <div key={v} style={{ padding: "7px 14px", borderRadius: 8, background: "var(--doc-lt)", fontSize: 13, fontWeight: 700, color: "var(--doc-d2)" }}>{v}</div>
+            ))}
+          </div>
+          <div className="science-shield-note">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--doc-blue)" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <div style={{ fontSize: 14, fontWeight: 750, color: "rgba(255,255,255,.75)", lineHeight: 1.4 }}>Protocol mapping is assistive. Final protocol selection is the doctor's clinical decision.</div>
+          </div>
+        </div>
+
+        <div className="science-body-label">Synbiotic Mechanism</div>
+        <div className="science-white-card">
+          <div className="science-white-head">
+            <div className="science-icon" style={{ background: "rgba(92,184,130,.07)" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--doc-green)" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+            <div className="science-card-h">Pre→Pro→Post Mechanism</div>
+          </div>
+          <div style={{ fontSize: 14, color: "var(--doc-d2)", lineHeight: 1.65, marginBottom: 16 }}>Sequential Pre→Pro→Postbiotic approach targeting the gut-inflammation axis through Mitochondria Bio-regeneration System activation.</div>
+          {[
+            { n: "1", c: "var(--doc-blue)", bg: "rgba(59,130,200,.07)", label: "Prebiotic Substrate", desc: "Conditions the gut microenvironment" },
+            { n: "2", c: "var(--doc-blue)", bg: "rgba(59,130,200,.07)", label: "Targeted Probiotics", desc: "Nano-encapsulated, site-specific delivery" },
+            { n: "3", c: "var(--doc-green)", bg: "rgba(92,184,130,.07)", label: "Postbiotic Metabolites", desc: "Urolithin-A + L-Tryptophan" },
+            { n: "4", c: "var(--doc-green)", bg: "rgba(92,184,130,.07)", label: "MBS Activation", desc: "Mitochondria Bio-regeneration cascade" },
+          ].map(({ n, c, bg, label, desc }) => (
+            <div key={n} className="science-step-row">
+              <div className="science-step-num" style={{ background: bg, color: c }}>{n}</div>
+              <div><div style={{ fontSize: 15, fontWeight: 750, color: "var(--doc-d1)" }}>{label}</div><div style={{ fontSize: 13, color: "var(--doc-d3)" }}>{desc}</div></div>
+            </div>
+          ))}
+        </div>
+
+        <div className="science-body-label">Key References</div>
+        <div style={{ background: "var(--doc-white)", borderRadius: 16, overflow: "hidden", marginBottom: 12, border: "1px solid var(--doc-lt2)" }}>
+          <div className="science-ref-anchor">
+            <div style={{ fontSize: 11, fontWeight: 850, letterSpacing: ".08em", color: "var(--doc-blue)", textTransform: "uppercase", marginBottom: 6 }}>Anchor Reference</div>
+            <div style={{ fontSize: 15, fontWeight: 750, color: "var(--doc-d1)", lineHeight: 1.4, marginBottom: 4 }}>Urolithin A induces mitophagy and prolongs lifespan</div>
+            <div style={{ fontSize: 13, color: "var(--doc-d3)" }}>Ryu D, et al. <em>Nature Medicine</em>, 2016</div>
+            <div style={{ fontSize: 13, color: "var(--doc-blue)", marginTop: 3, fontWeight: 700 }}>doi: 10.1038/nm.4132</div>
+          </div>
+          {[
+            { title: "Short-chain fatty acids and gut inflammation", meta: "Dalile B, et al. Gut Microbes, 2019 · doi: 10.1080/19490976.2019.1624603" },
+            { title: "Tryptophan metabolism and gut-brain homeostasis", meta: "Agus A, et al. Cell Host & Microbe, 2018 · doi: 10.1016/j.chom.2018.05.003" },
+            { title: "CRP and cardiovascular disease prediction", meta: "Kaptoge S, et al. NEJM, 2012 · doi: 10.1056/NEJMoa1107477" },
+            { title: "NLR as inflammatory marker", meta: "Forget P, et al. Anesthesiology, 2017 · doi: 10.1097/ALN.0000000000001564" },
+            { title: "TG/HDL ratio as insulin resistance surrogate", meta: "McLaughlin T, et al. JCEM, 2005 · doi: 10.1210/jc.2004-1439" },
+            { title: "TyG Index and insulin resistance", meta: "Simental-Mendía LE, et al. Cardiovasc Diabetol, 2008 · doi: 10.1186/1475-2840-7-10" },
+          ].map(({ title, meta }) => (
+            <div key={title} className="science-ref-row">
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--doc-d1)", lineHeight: 1.4 }}>{title}</div>
+              <div style={{ fontSize: 13, color: "var(--doc-d3)", marginTop: 3 }}>{meta}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="science-body-label">Rules &amp; Limitations</div>
+        <div className="science-rules">
+          <div className="science-rule-label" style={{ color: "var(--doc-green)" }}>MUST</div>
+          <div className="science-rule-text">Show subscores · Show confidence · Show disclaimer · Allow doctor override · Log all changes · Version scoring</div>
+          <div className="science-rule-label" style={{ color: "var(--doc-red)" }}>MUST NOT</div>
+          <div className="science-rule-text">Diagnose disease · Auto-prescribe · Hide logic · Ignore abnormal values · Present score without context</div>
+          <div className="science-rule-label" style={{ color: "var(--doc-d4)" }}>LIMITATIONS</div>
+          <div className="science-rule-text" style={{ color: "var(--doc-d3)" }}>Based on available markers only. Does not replace clinical evaluation. Individual results vary.</div>
+        </div>
+        <div style={{ textAlign: "center", fontSize: 12, color: "var(--doc-d4)", padding: "8px 0 16px", lineHeight: 1.6 }}>IMSI v1.0 · References for clinical education only.<br />GutGuard does not claim equivalence to cited study outcomes.</div>
+      </div>
+    </div>
+  );
+}
+
+function ViberPage({
+  connected,
+  onConnect,
+  onBack,
+}: {
+  connected: boolean;
+  onConnect: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <div className="viber-screen">
+      <div className="detail-sticky-nav">
+        <div className="detail-nav-row">
+          <button onClick={onBack} style={{ background: "none", border: "none", fontSize: 16, fontWeight: 750, color: "var(--doc-d3)", padding: "8px 0", cursor: "pointer", minHeight: 44 }}>← Back</button>
+          <div style={{ fontSize: 16, fontWeight: 850, color: "var(--doc-d1)" }}>Viber Notifications</div>
+          <div style={{ width: 60 }} />
+        </div>
+      </div>
+
+      <div style={{ padding: "clamp(14px,4.5vw,24px)" }}>
+        {connected ? (
+          <div className="viber-verified">
+            <div style={{ width: 44, height: 44, borderRadius: 14, background: "rgba(115,96,242,.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7360F2" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 750, color: "var(--doc-green)" }}>Viber Connected</div>
+              <div style={{ fontSize: 13, color: "var(--doc-d3)", marginTop: 2 }}>GutGuard · Doctor Portal</div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div style={{ textAlign: "center", padding: "clamp(16px,5vw,28px) 20px 24px" }}>
+              <div style={{ width: 64, height: 64, borderRadius: 20, background: "rgba(115,96,242,.08)", border: "1px solid rgba(38,165,219,.12)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7360F2" strokeWidth="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 850, color: "var(--doc-d1)", letterSpacing: "-.02em", marginBottom: 8 }}>Connect Viber</div>
+              <div style={{ fontSize: 15, color: "var(--doc-d3)", lineHeight: 1.6, maxWidth: 280, margin: "0 auto" }}>Get instant alerts on your phone. No dashboard needed — your patients come to you.</div>
+            </div>
+
+            <div style={{ background: "var(--doc-white)", borderRadius: 20, padding: 22, marginBottom: 14, boxShadow: "0 1px 3px rgba(0,0,0,.02)" }}>
+              <div style={{ fontSize: 13, fontWeight: 850, letterSpacing: ".10em", color: "var(--doc-d4)", textTransform: "uppercase", marginBottom: 16 }}>Setup in 3 steps</div>
+              {[
+                { n: 1, title: "Open Viber → search @GutGuardDoc", desc: "Already on your phone? Tap to open directly." },
+                { n: 2, title: "Tap Message → type /connect", desc: "The bot will ask for your clinic verification code." },
+                { n: 3, title: "Enter this code in the bot", desc: null },
+              ].map(({ n, title, desc }) => (
+                <div key={n} style={{ display: "flex", gap: 14, marginBottom: n < 3 ? 18 : 0 }}>
+                  <div className="viber-step-num">{n}</div>
+                  <div style={{ flex: 1, paddingTop: 5 }}>
+                    <div style={{ fontSize: 16, fontWeight: 750, color: "var(--doc-d1)", marginBottom: 4 }}>{title}</div>
+                    {desc ? <div style={{ fontSize: 14, color: "var(--doc-d3)", lineHeight: 1.5 }}>{desc}</div> : null}
+                    {n === 3 ? <div className="viber-code-block">CLINIC-ANIMAS-2847</div> : null}
+                    {n === 3 ? <div style={{ fontSize: 13, color: "var(--doc-d3)", marginTop: 4 }}>Unique to your clinic account. Do not share.</div> : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="viber-channel-card">
+              <div style={{ fontSize: 13, fontWeight: 850, letterSpacing: ".08em", color: "var(--doc-d4)", textTransform: "uppercase", marginBottom: 12 }}>Where your notifications go</div>
+              {[
+                { icon: "email", color: "var(--doc-blue)", bg: "rgba(59,130,200,.08)", title: "Email — Official channel", desc: "Redemption receipts · Weekly earnings digest · Protocol summaries" },
+                { icon: "viber", color: "#7360F2", bg: "rgba(115,96,242,.08)", title: "Viber — Instant alerts", desc: "New enrollments · Scan uploads · Red flags · Trial expiring" },
+              ].map(({ color, bg, title, desc, icon }) => (
+                <div key={icon} style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: icon === "viber" ? 0 : 12 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 10, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {icon === "email"
+                      ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    }
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 750, color: "var(--doc-d1)" }}>{title}</div>
+                    <div style={{ fontSize: 13, color: "var(--doc-d3)", marginTop: 2, lineHeight: 1.5 }}>{desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={onConnect}
+              style={{ width: "100%", minHeight: 54, borderRadius: 16, border: "none", background: "var(--doc-blue)", color: "#fff", fontSize: 17, fontWeight: 850, fontFamily: "var(--doc-font)", cursor: "pointer", transition: "transform .1s" }}
+            >
+              I&apos;ve Connected — Verify
+            </button>
+            <div style={{ textAlign: "center", marginTop: 12 }}>
+              <button onClick={onBack} style={{ background: "none", border: "none", fontSize: 14, color: "var(--doc-d4)", fontFamily: "var(--doc-font)", cursor: "pointer", padding: 8 }}>Skip for now</button>
+            </div>
+          </>
+        )}
+
+        {/* What you'll receive */}
+        <div style={{ borderRadius: 20, padding: 22, marginTop: 14, background: "var(--doc-bg)" }}>
+          <div style={{ fontSize: 13, fontWeight: 850, letterSpacing: ".10em", color: "rgba(255,255,255,.45)", textTransform: "uppercase", marginBottom: 14 }}>You&apos;ll receive</div>
+          {[
+            { icon: "green", label: "New enrollment", msg: '"Maria Santos enrolled in Grow Protocol. ₱3,500 credits earned."' },
+            { icon: "blue", label: "Scan uploaded", msg: '"Maria uploaded 2nd scan. Score: 82 → 48. Review recommended."' },
+            { icon: "red", label: "⚠️ Red flag", msg: '"Ricardo Dela Cruz: hs-CRP >10. Medical review required."' },
+            { icon: "gold", label: "Weekly digest", msg: '"3 patients due for scans. 2 trial protocols expiring this week."' },
+          ].map(({ icon, label, msg }) => {
+            const color = icon === "red" ? "var(--doc-red)" : icon === "green" ? "var(--doc-green)" : icon === "gold" ? "var(--doc-gold)" : "var(--doc-blue)";
+            const bg = icon === "red" ? "rgba(212,32,32,.08)" : icon === "green" ? "rgba(92,184,130,.08)" : icon === "gold" ? "rgba(232,178,48,.08)" : "rgba(59,130,200,.08)";
+            return (
+              <div key={label} className="viber-msg-preview">
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: color }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 750, color: "rgba(255,255,255,.70)" }}>{label}</div>
+                  <div style={{ fontSize: 13, color: "rgba(255,255,255,.62)", marginTop: 2 }}>{msg}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ height: 40 }} />
+      </div>
+    </div>
   );
 }
 
