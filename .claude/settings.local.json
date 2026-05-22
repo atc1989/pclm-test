@@ -5,7 +5,9 @@
       "Bash(mkdir -p /Users/omiple/Developer/ATC/GutGuardBREv2/gutguard-pclm/app/api/admin/doctors/\\\\[id\\\\]/onboarding)",
       "Bash(npx tsc *)",
       "PowerShell(docker --version 2>$null)",
-      "PowerShell(docker-compose --version 2>$null)"
+      "PowerShell(docker-compose --version 2>$null)",
+      "Bash(curl -s \"http://localhost:3000/_next/static/chunks/app_13a936k._.js\")",
+      "Read(//tmp/**)"
     ]
   }
 }

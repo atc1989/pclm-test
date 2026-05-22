@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, ReactNode } from "react";
+import { useEffect, useMemo, useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -18,7 +18,7 @@ export function ProtectedRoute({
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     async function checkAuth() {
@@ -60,11 +60,11 @@ export function ProtectedRoute({
 
     checkAuth();
 
-    // Listen for auth changes
+    // Listen for explicit sign-out only — don't redirect on INITIAL_SESSION or TOKEN_REFRESHED
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!session) {
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
         router.push("/auth/login");
       }
     });
@@ -72,9 +72,9 @@ export function ProtectedRoute({
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase, router, requiredRole]);
+  }, [supabase, router, requiredRole]); // supabase is stable via useMemo
 
-  if (loading) {
+  if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

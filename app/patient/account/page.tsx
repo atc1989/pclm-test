@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 const INPUT_STYLE = { background: "rgba(255,255,255,.04)", border: "1.5px solid rgba(255,255,255,.08)", color: "rgba(255,255,255,.88)", borderRadius: 14, width: "100%", padding: "16px 18px", fontFamily: "var(--f)", fontSize: "clamp(18px,5.2vw,21px)", outline: "none", boxSizing: "border-box" } as const;
 const focus = (e: React.FocusEvent<HTMLInputElement>) => e.currentTarget.style.borderColor = "rgba(59,130,200,.4)";
@@ -50,34 +51,37 @@ export default function AccountPage() {
     setLoading(true);
 
     try {
-      // Step 1 — establish session if not already authed
+      // Step 1 — establish session via browser client so cookies are set correctly for all subsequent requests
       if (!alreadyAuthed) {
-        const signupRes  = await fetch("/api/auth/patient-signup", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
-        const signupData = await signupRes.json();
+        const supabase = createClient();
+        const { data: signupData, error: signupError } = await supabase.auth.signUp({ email, password });
 
-        if (signupData.userExists) {
-          // Account exists — sign in
-          const loginRes  = await fetch("/api/auth/patient-login", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password }),
-          });
-          const loginData = await loginRes.json();
-          if (!loginData.success) {
-            setError(loginData.error || "An account with this email already exists. Check your password.");
+        if (signupError) {
+          // "already registered" → try signing in instead
+          if (signupError.message.toLowerCase().includes("already registered") || signupError.message.toLowerCase().includes("already exists")) {
+            const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+            if (loginError) {
+              setError("An account with this email already exists. Check your password.");
+              setLoading(false);
+              return;
+            }
+          } else {
+            setError(signupError.message || "Could not create account. Please try again.");
             setLoading(false);
             return;
           }
-        } else if (signupData.confirmEmail) {
+        } else if (!signupData.session && signupData.user) {
           setError("Check your email to confirm your account, then come back here.");
           setLoading(false);
           return;
-        } else if (!signupData.success) {
-          setError(signupData.error || "Could not create account. Please try again.");
-          setLoading(false);
-          return;
+        } else if (!signupData.user) {
+          // Supabase returned no user and no error — treat as existing account
+          const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+          if (loginError) {
+            setError(loginError.message || "Could not sign in. Please try again.");
+            setLoading(false);
+            return;
+          }
         }
       }
 

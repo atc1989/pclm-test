@@ -70,14 +70,11 @@ export function PatientDashboardContent() {
 
   useEffect(() => {
     fetch("/api/patient/dashboard")
-      .then(r => r.json())
-      .then(d => {
-        if (d.error) { router.replace("/patient/sign-in"); return; }
-        setData(d);
-      })
-      .catch(() => setData(null))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setData(d); })
+      .catch(() => {})
       .finally(() => setLoading(false));
-  }, [router]);
+  }, []);
 
   const latestScore = data?.scanHistory?.length ? data.scanHistory[data.scanHistory.length - 1].score : null;
 
