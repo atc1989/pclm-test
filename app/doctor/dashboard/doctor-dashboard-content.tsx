@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/supabase/hooks";
 import { useLogout } from "@/lib/supabase/use-logout";
@@ -22,6 +22,15 @@ type Patient = {
   scanDate: string;
   lastEvent: string;
   status: "review" | "improving" | "trial" | "inactive" | "steady";
+  history?: HistoryEvent[];
+  patientNote?: string;
+  patientNoteDate?: string;
+  lastMsgDate?: number;
+  approved?: boolean;
+  approvalType?: string;
+  approvalDate?: string;
+  referred?: boolean;
+  firstReviewDone?: boolean;
 };
 
 type Request = {
@@ -31,13 +40,33 @@ type Request = {
   sex: "F" | "M";
   score: number;
   protocol: ProtocolKey;
-  source: string;
-  timeLeft: string;
+  source: "referral" | "clinic" | "online";
+  referredBy?: string;
+  note?: string;
+  risk: string;
+  riskCol: string;
+  mkv: { k: string; v: string; u: string; hi: boolean }[];
+  lab: string;
+  scanDate: string;
+  requestedAt: number;
+  deadline: number;
+  status: "pending" | "accepted" | "declined";
 };
 
-type PortalView = "dashboard" | "detail" | "science" | "viber" | "redeem" | "confirm" | "receipt";
+type PortalView = "dashboard" | "detail" | "request" | "science" | "viber" | "redeem" | "confirm" | "receipt";
 type DetailTab = "summary" | "history";
 type RedeemMethod = "gcash" | "bank" | "clinic";
+
+type HistoryEvent = {
+  type: "pt_scan" | "pt_symptom" | "note" | "obs" | "pt_enroll" | "pt_upgrade" | "approval" | "reminder" | "pt_inactive" | "checkin-sent" | "upgrade-sent" | "msg_sent";
+  text: string;
+  date: string;
+  mk?: Record<string, number>;
+  lab?: string;
+  label?: string;
+  by?: string;
+  action?: string;
+};
 
 const protocols: Record<ProtocolKey, { name: string; days: number; credits: number; price: string }> = {
   trial: { name: "Trial", days: 5, credits: 450, price: "PHP 1,299" },
@@ -57,11 +86,22 @@ const patients: Patient[] = [
     baseline: 82,
     daysOn: 42,
     symptoms: "Fatigue, Bloating, Low Energy",
-    note: "Markers are trending well. Stay consistent with the current protocol.",
+    note: "Mild inflammation pattern",
     lab: "Hi-Precision Diagnostics",
-    scanDate: "Mar 20, 2026",
+    scanDate: "Mar 2, 2026",
     lastEvent: "Uploaded 2nd scan - GLIS 82 to 48",
     status: "improving",
+    patientNote: "Your markers are trending well. Stay consistent.",
+    patientNoteDate: "Mar 15",
+    history: [
+      { type: "pt_symptom", text: "Bloating almost gone. Sleeping much better.", date: "Mar 22" },
+      { type: "pt_scan", text: "Uploaded 2nd scan — Score: 82 → 48", date: "Mar 20", mk: { crp: 2.1, wbc: 7.1, neut: 58, lymph: 28, glu: 102, trig: 175, hdl: 42, alt: 36 }, lab: "Hi-Precision Diagnostics" },
+      { type: "obs", text: "Energy improved, bloating reduced", date: "Mar 15" },
+      { type: "note", text: "Your markers are trending well. Stay consistent.", date: "Mar 15" },
+      { type: "pt_symptom", text: "Slight improvement in energy. Still bloated.", date: "Mar 10" },
+      { type: "pt_enroll", text: "Enrolled in Grow Protocol", date: "Mar 2" },
+      { type: "obs", text: "Initial assessment — fatigue and bloating pattern", date: "Mar 2" },
+    ],
   },
   {
     id: 2,
@@ -77,6 +117,9 @@ const patients: Patient[] = [
     scanDate: "Mar 5, 2026",
     lastEvent: "New Power Protocol enrollment",
     status: "review",
+    history: [
+      { type: "pt_enroll", text: "Enrolled in Power Protocol", date: "Mar 5" },
+    ],
   },
   {
     id: 3,
@@ -88,11 +131,22 @@ const patients: Patient[] = [
     baseline: 64,
     daysOn: 60,
     symptoms: "Digestive discomfort",
-    note: "Digestion improved, bowel regularity restored.",
+    note: "Gut imbalance pattern",
     lab: "Hi-Precision Diagnostics",
-    scanDate: "Mar 20, 2026",
+    scanDate: "Mar 3, 2026",
     lastEvent: "Uploaded 3rd scan - GLIS 64 to 32",
     status: "improving",
+    patientNote: "Great improvement. Continue Power Protocol.",
+    patientNoteDate: "Mar 18",
+    history: [
+      { type: "pt_symptom", text: "Feeling the best I have in years. No more discomfort.", date: "Mar 22" },
+      { type: "pt_scan", text: "Uploaded 3rd scan — Score: 64 → 32", date: "Mar 20", mk: { crp: 0.8, wbc: 6.2, neut: 52, lymph: 34, glu: 88, trig: 120, hdl: 55, alt: 24 }, lab: "Hi-Precision Diagnostics" },
+      { type: "note", text: "Great improvement. Continue Power Protocol.", date: "Mar 18" },
+      { type: "obs", text: "Digestion improved, bowel regularity restored", date: "Mar 18" },
+      { type: "pt_symptom", text: "Digestion getting better. Less gas after meals.", date: "Mar 12" },
+      { type: "pt_enroll", text: "Enrolled in Power Protocol", date: "Mar 3" },
+      { type: "obs", text: "Initial — digestive discomfort, irregular bowel", date: "Mar 3" },
+    ],
   },
   {
     id: 4,
@@ -103,11 +157,15 @@ const patients: Patient[] = [
     score: 28,
     daysOn: 4,
     symptoms: "Low Energy",
-    note: "Trial protocol is ending. Review continuation options.",
+    note: "Mild inflammatory burden",
     lab: "Philippine Red Cross",
     scanDate: "Mar 20, 2026",
     lastEvent: "Trial Day 4 check-in received",
     status: "trial",
+    history: [
+      { type: "pt_symptom", text: "Energy slightly better. Will I need a full protocol?", date: "Mar 22" },
+      { type: "pt_enroll", text: "Enrolled in Trial Protocol", date: "Mar 20" },
+    ],
   },
   {
     id: 5,
@@ -118,11 +176,15 @@ const patients: Patient[] = [
     score: 55,
     daysOn: 22,
     symptoms: "Bloating, Poor Sleep",
-    note: "Sleep improving. Follow-up scan window is approaching.",
+    note: "Sleep disruption + gut imbalance",
     lab: "Hi-Precision Diagnostics",
     scanDate: "Mar 8, 2026",
     lastEvent: "Patient reports sleep improvement",
     status: "steady",
+    history: [
+      { type: "pt_symptom", text: "Still bloated but sleeping a bit better.", date: "Mar 16" },
+      { type: "pt_enroll", text: "Enrolled in Grow Protocol", date: "Mar 8" },
+    ],
   },
   {
     id: 6,
@@ -138,6 +200,28 @@ const patients: Patient[] = [
     scanDate: "Mar 10, 2026",
     lastEvent: "Inactive - no check-in for 10 days",
     status: "inactive",
+    history: [
+      { type: "pt_inactive", text: "No check-in for 10 days", date: "Mar 20" },
+      { type: "pt_enroll", text: "Enrolled in Start Protocol", date: "Mar 10" },
+    ],
+  },
+  {
+    id: 7,
+    name: "Elena Villanueva",
+    age: 45,
+    sex: "F",
+    protocol: "grow",
+    score: 65,
+    daysOn: 12,
+    symptoms: "Poor Sleep, Low Energy",
+    note: "Inflammation with sleep disruption",
+    lab: "MedLab GenSan",
+    scanDate: "Mar 12, 2026",
+    lastEvent: "Enrolled in Grow Protocol",
+    status: "steady",
+    history: [
+      { type: "pt_enroll", text: "Enrolled in Grow Protocol", date: "Mar 12" },
+    ],
   },
 ];
 
@@ -147,30 +231,77 @@ const redemptionMethods: Record<RedeemMethod, { name: string; description: strin
   clinic: { name: "Clinic Supplies", description: "Applied to next order", processing: "Next order" },
 };
 
-const requests: Request[] = [
+const initialRequests: Request[] = [
   {
-    id: "req-1",
+    id: "req_001",
     name: "Rosa Santos",
     age: 52,
     sex: "F",
     score: 81,
     protocol: "grow",
-    source: "Referred by Maria Santos",
-    timeLeft: "21h left",
+    source: "referral",
+    referredBy: "Maria Santos",
+    note: "My friend Maria referred me. I have been very tired and my joints ache.",
+    risk: "High Risk",
+    riskCol: "#D42020",
+    mkv: [
+      { k: "CRP", v: "4.2", u: "mg/L", hi: true },
+      { k: "Uric Acid", v: "7.8", u: "mg/dL", hi: true },
+      { k: "Triglycerides", v: "218", u: "mg/dL", hi: true },
+    ],
+    lab: "Hi-Precision Diagnostics",
+    scanDate: "Apr 4, 2026",
+    requestedAt: Date.now() - 3 * 3600000,
+    deadline: Date.now() + 21 * 3600000,
+    status: "pending",
   },
   {
-    id: "req-2",
+    id: "req_002",
     name: "Jun Dela Cruz",
     age: 44,
     sex: "M",
     score: 74,
     protocol: "grow",
-    source: "Clinic QR Scan",
-    timeLeft: "23h left",
+    source: "clinic",
+    note: "Scanned at your clinic today. Waiting for your guidance, Doc.",
+    risk: "Moderate Risk",
+    riskCol: "#E8772E",
+    mkv: [
+      { k: "CRP", v: "2.8", u: "mg/L", hi: true },
+      { k: "Glucose", v: "114", u: "mg/dL", hi: true },
+      { k: "HDL", v: "38", u: "mg/dL", hi: true },
+    ],
+    lab: "MedLab GenSan",
+    scanDate: "Apr 4, 2026",
+    requestedAt: Date.now() - 1 * 3600000,
+    deadline: Date.now() + 23 * 3600000,
+    status: "pending",
+  },
+  {
+    id: "req_003",
+    name: "Perla Ramos",
+    age: 61,
+    sex: "F",
+    score: 68,
+    protocol: "start",
+    source: "online",
+    risk: "Moderate Risk",
+    riskCol: "#E8772E",
+    mkv: [
+      { k: "WBC", v: "11.2", u: "×10⁹/L", hi: true },
+      { k: "Lymphocytes", v: "42", u: "%", hi: true },
+      { k: "Glucose", v: "108", u: "mg/dL", hi: true },
+    ],
+    lab: "Philippine Red Cross GenSan",
+    scanDate: "Apr 3, 2026",
+    requestedAt: Date.now() - 18 * 3600000,
+    deadline: Date.now() + 6 * 3600000,
+    status: "pending",
   },
 ];
 
 const dashboardStyles = `
+@property --ra{syntax:'<angle>';initial-value:0deg;inherits:false}
 :root{--doc-bg:#0c1017;--doc-s1:#111a26;--doc-blue:#3b82c8;--doc-lt:#f3f2ef;--doc-lt2:#e8e6e0;--doc-lt3:#ddd9d0;--doc-white:#fff;--doc-d1:#1a1a17;--doc-d2:#4a4840;--doc-d3:#7a7870;--doc-d4:#9a978f;--doc-green:#5cb882;--doc-gold:#d4a840;--doc-orange:#e8772e;--doc-red:#d42020;--doc-font:'Outfit',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
 .doctor-portal{min-height:100vh;min-height:100dvh;background:var(--doc-lt2);font-family:var(--doc-font);color:var(--doc-d1);padding-top:96px}
 .doctor-portal.no-toast{padding-top:0}
@@ -240,18 +371,33 @@ const dashboardStyles = `
 .stat-blue{background:rgba(59,130,200,.07);border:1px solid rgba(59,130,200,.18);color:var(--doc-blue)}
 .content-card{background:var(--doc-lt);border-radius:22px 22px 0 0;margin-top:-2px;padding:clamp(22px,5vw,36px) clamp(22px,5vw,32px) 32px}
 .section-label{font-size:14px;font-weight:850;letter-spacing:.1em;color:var(--doc-d4);text-transform:uppercase;margin-bottom:12px}
-.queue-list{margin-bottom:16px}
-.queue-item{display:flex;align-items:center;gap:14px;padding:14px 15px;background:var(--doc-white);border:1px solid rgba(0,0,0,.05);border-radius:14px;margin-bottom:9px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.queue-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.queue-name{display:block;font-size:17px;font-weight:850;color:var(--doc-d1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.queue-sub{display:block;font-size:14px;color:var(--doc-d3);margin-top:2px}
-.queue-badge{font-size:13px;font-weight:850;border-radius:999px;padding:6px 9px;white-space:nowrap}
-.today-card{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:14px;background:rgba(92,184,130,.04);border:1px solid rgba(92,184,130,.1);margin-bottom:16px}
-.today-card strong{color:var(--doc-green)}
+@keyframes reqSlideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.queue-list{margin-bottom:12px}
+.wq-item{display:flex;align-items:center;gap:12px;padding:11px 13px;background:var(--doc-white);border-radius:12px;margin-bottom:7px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.06);border:1px solid rgba(0,0,0,.05);transition:transform .1s,box-shadow .1s;width:100%;text-align:left;font-family:var(--doc-font);-webkit-tap-highlight-color:transparent}
+.wq-item:active{transform:scale(.99);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.wq-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.wq-name{font-size:14px;font-weight:700;color:var(--doc-d1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wq-sub{font-size:12px;font-weight:400;color:var(--doc-d3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wq-badge{font-size:12px;font-weight:700;padding:3px 9px;border-radius:8px;flex-shrink:0;white-space:nowrap}
+.all-clear{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(92,184,130,.04);border:1px solid rgba(92,184,130,.10);border-radius:12px;margin-bottom:12px;font-size:14px;color:var(--doc-d2)}
+.today-notices{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.today-notice{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px}
+.today-notice-icon{width:24px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.today-notice span{font-size:15px;color:var(--doc-d1)}
 .search-wrap{position:relative;margin-bottom:14px}
 .search-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:rgba(0,0,0,.3)}
-.search-wrap input{width:100%;padding:15px 16px 15px 42px;border:1.5px solid var(--doc-lt2);border-radius:14px;background:var(--doc-white);font:650 17px var(--doc-font);color:var(--doc-d1);outline:0}
-.search-wrap input:focus{border-color:rgba(59,130,200,.45);box-shadow:0 0 0 3px rgba(59,130,200,.1)}
+.search-wrap input{width:100%;padding:12px 14px 12px 38px;border:1.5px solid var(--doc-lt2);border-radius:12px;background:var(--doc-white);font:500 15px var(--doc-font);color:var(--doc-d1);outline:0;transition:border-color .15s}
+.search-wrap input:focus{border-color:rgba(59,130,200,.35)}
+.req-screen{min-height:100vh;min-height:100dvh;background:var(--doc-lt);animation:detailIn .28s cubic-bezier(.32,1,.68,1) both}
+.req-sticky-nav{position:sticky;top:0;z-index:10;background:rgba(243,242,239,.95);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.req-nav-row{padding:16px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--doc-lt2)}
+.req-body{padding:16px 24px 100px}
+.req-accept-btn{width:100%;min-height:52px;border-radius:12px;border:none;font-size:15px;font-weight:700;font-family:var(--doc-font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .1s,box-shadow .1s;background:var(--doc-green);color:#fff;box-shadow:0 4px 18px rgba(92,184,130,.28)}
+.req-accept-btn:active{transform:scale(.97)}
+.req-decline-btn{flex:1;padding:15px;border-radius:12px;border:1.5px solid var(--doc-lt3);background:none;color:var(--doc-d3);font-size:14px;font-weight:700;font-family:var(--doc-font);cursor:pointer;min-height:52px}
+.mkv-pill{padding:6px 11px;border-radius:10px;background:rgba(212,32,32,.05);border:1px solid rgba(212,32,32,.14);display:inline-flex;align-items:baseline;gap:3px}
+.req-reason-chip{padding:7px 13px;border-radius:10px;border:1.5px solid var(--doc-lt3);background:var(--doc-white);color:var(--doc-d3);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--doc-font);transition:all .15s;display:inline-block;margin:0 5px 5px 0}
+.req-reason-chip.on{border-color:var(--doc-red);background:rgba(212,32,32,.05);color:var(--doc-red)}
 .request-card{background:linear-gradient(160deg,rgba(59,130,200,.04),var(--doc-white) 62%);border-left:3px solid var(--doc-blue);border-radius:16px;box-shadow:0 1px 5px rgba(0,0,0,.07);padding:17px;margin-bottom:10px}
 .request-top,.patient-top{display:flex;align-items:center;gap:13px}
 .request-body,.patient-body{flex:1;min-width:0}
@@ -368,7 +514,8 @@ const dashboardStyles = `
 @media(prefers-reduced-motion:reduce){.earnings-toast.is-entering .earnings-inner,.earnings-toast.is-leaving .earnings-inner,.earnings-amount,.earnings-icon:after,.redeem-screen,.redeem-balance,.redeem-peso,.redeem-stat,.redeem-list,.confirm-card,.receipt-screen,.receipt-check,.receipt-amount,.receipt-body,.confetti-piece{animation:none}}
 @media(max-width:520px){.doctor-portal{padding-top:92px}.doctor-portal.no-toast{padding-top:0}.doctor-name{display:none}.doctor-shell{box-shadow:none}.hero-count strong{font-size:48px}.utilities{gap:10px;justify-content:space-between}.utility-btn{font-size:14px}.detail-grid{grid-template-columns:1fr}.earnings-inner{padding:14px 15px}.earnings-amount{font-size:24px}.earnings-sub{font-size:12px}.earnings-view{padding:8px 12px}.redeem-peso,.receipt-amount{font-size:42px}.quick-amounts{flex-wrap:wrap}.quick-amounts button{min-width:31%}}
 /* ── Patient Detail Screen ── */
-.detail-screen{background:var(--doc-lt);min-height:100vh;min-height:100dvh}
+@keyframes detailIn{from{opacity:0;transform:scale(.97) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.detail-screen{background:var(--doc-lt);min-height:100vh;min-height:100dvh;animation:detailIn .28s cubic-bezier(.32,1,.68,1) both}
 .detail-sticky-nav{position:sticky;top:0;z-index:10;background:rgba(243,242,239,.97);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
 .detail-nav-row{padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
 .detail-score-strip{padding:2px 24px 8px;font-size:14px;color:var(--doc-d3)}
@@ -439,10 +586,39 @@ const dashboardStyles = `
 .decline-reasons{overflow:hidden;animation:declineSlide .22s ease both}
 .reason-chip{padding:7px 13px;border-radius:10px;border:1.5px solid var(--doc-lt3);background:var(--doc-white);color:var(--doc-d3);font-size:13px;font-weight:750;cursor:pointer;font-family:var(--doc-font);transition:all .15s;display:inline-block;margin:0 5px 5px 0}
 .reason-chip.on{border-color:var(--doc-red);background:rgba(212,32,32,.05);color:var(--doc-red)}
-.req-accept-btn{width:100%;min-height:52px;border-radius:14px;border:none;font-size:16px;font-weight:850;font-family:var(--doc-font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .1s,box-shadow .1s;background:linear-gradient(135deg,var(--doc-green),#3fa861);color:#fff;box-shadow:0 4px 18px rgba(92,184,130,.32)}
-.req-accept-btn:active{transform:scale(.97)}
-.req-decline-text{background:none;border:none;font-size:13px;font-weight:700;color:var(--doc-d4);font-family:var(--doc-font);cursor:pointer;padding:4px 0;transition:color .15s}
-.req-decline-text:hover{color:var(--doc-red)}
+.dr-ring{position:relative;flex-shrink:0}
+.dr-ring-trk{position:absolute;inset:0;border-radius:50%;background:rgba(255,255,255,.08);-webkit-mask:radial-gradient(closest-side,transparent 84%,#000 84.5%,#000 96%,transparent 96.5%);mask:radial-gradient(closest-side,transparent 84%,#000 84.5%,#000 96%,transparent 96.5%)}
+.dr-ring-trk-lt{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.06);-webkit-mask:radial-gradient(closest-side,transparent 84%,#000 84.5%,#000 96%,transparent 96.5%);mask:radial-gradient(closest-side,transparent 84%,#000 84.5%,#000 96%,transparent 96.5%)}
+.dr-ring-fill{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 180deg,#5CB882 0%,#7EBC6C 14%,#9AB854 28%,#C4B044 42%,#D4A840 52%,#CC8844 66%,#CC6E48 78%,#D03030 90%,#D42020 100%);-webkit-mask-image:radial-gradient(closest-side,transparent 84%,#000 84.5%,#000 96%,transparent 96.5%),conic-gradient(from 180deg,#000 var(--ra),transparent var(--ra));-webkit-mask-composite:source-in;mask-image:radial-gradient(closest-side,transparent 84%,#000 84.5%,#000 96%,transparent 96.5%),conic-gradient(from 180deg,#000 var(--ra),transparent var(--ra));mask-composite:intersect;transition:--ra 1.2s cubic-bezier(.32,1,.68,1)}
+@supports not (mask-composite:intersect){.dr-ring-fill{-webkit-mask-image:radial-gradient(closest-side,transparent 84%,#000 84.5%,#000 96%,transparent 96.5%);mask-image:radial-gradient(closest-side,transparent 84%,#000 84.5%,#000 96%,transparent 96.5%)}}
+.dr-ring-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.pt-card{background:var(--doc-white);border-radius:20px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,.02);overflow:hidden;transition:transform .12s,box-shadow .12s;cursor:pointer;border:none;width:100%;text-align:left;font-family:var(--doc-font);color:inherit}
+.pt-card:active{transform:scale(.98);box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.pt-card-danger{background:linear-gradient(160deg,rgba(212,32,32,.025) 0%,var(--doc-white) 60%);border-left:3px solid var(--doc-red)}
+.pt-card-warn{background:linear-gradient(160deg,rgba(232,178,48,.03) 0%,var(--doc-white) 60%);border-left:3px solid var(--doc-gold)}
+.pt-card-ok{border-left:3px solid var(--doc-green)}
+.pt-card-std{border-left:3px solid var(--doc-lt3)}
+.pt-card-body{padding:13px 15px 11px}
+.pt-card-name{font-size:17px;font-weight:700;color:var(--doc-d1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.pt-card-meta{font-size:14px;font-weight:400;color:var(--doc-d3);margin-top:2px}
+.pt-card-badge{display:inline-flex;align-items:center;font-size:12px;font-weight:700;padding:2px 7px;border-radius:8px;flex-shrink:0}
+.pt-card-bar{height:2px;background:var(--doc-lt2);border-radius:2px;overflow:hidden;margin-top:10px}
+.pt-card-bar-fill{height:100%;border-radius:2px;transition:width .8s cubic-bezier(.32,1,.68,1)}
+.pt-card-action{padding:0 15px 11px}
+.pt-card-cta{width:100%;padding:8px 12px;border-radius:10px;font-size:14px;font-weight:700;font-family:var(--doc-font);cursor:pointer;border:1.5px solid transparent;background:transparent;transition:transform .1s}
+.pt-card-cta:active{transform:scale(.97)}
+.action-btn-red{background:rgba(212,32,32,.08);border-color:rgba(212,32,32,.2);color:var(--doc-red)}
+.action-btn-grn{background:rgba(92,184,130,.08);border-color:rgba(92,184,130,.2);color:var(--doc-green)}
+.action-btn-gld{background:rgba(232,178,48,.08);border-color:rgba(232,178,48,.2);color:var(--doc-gold)}
+.action-btn-bl{background:rgba(59,130,200,.08);border-color:rgba(59,130,200,.2);color:var(--doc-blue)}
+.domain-bar{height:6px;border-radius:8px;background:rgba(0,0,0,.04);overflow:hidden}
+.domain-bar-fill{height:100%;border-radius:8px;transition:width 1s cubic-bezier(.32,1,.68,1)}
+@keyframes detailEnter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.detail-enter{animation:detailEnter .35s cubic-bezier(.32,1,.68,1) both}
+@keyframes panelIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.panel-in{animation:panelIn .2s cubic-bezier(.32,1,.68,1) both}
+@keyframes cardIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.pt-card{animation:cardIn .3s cubic-bezier(.32,1,.68,1) both}
 `;
 
 export function DoctorDashboardContent() {
@@ -451,6 +627,10 @@ export function DoctorDashboardContent() {
   const { logout } = useLogout();
   const [query, setQuery] = useState("");
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(patients[0]?.id ?? null);
+  const [patientOverrides, setPatientOverrides] = useState<Record<number, Partial<Patient>>>({});
+  const [acceptedPatients, setAcceptedPatients] = useState<Patient[]>([]);
+  const [requestList, setRequestList] = useState<Request[]>(initialRequests);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showEarningsToast, setShowEarningsToast] = useState(true);
   const [isEarningsLeaving, setIsEarningsLeaving] = useState(false);
@@ -464,12 +644,25 @@ export function DoctorDashboardContent() {
 
   const doctorName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Doctor";
   const displayName = doctorName === "Doctor" ? "Doctor" : `Dr. ${doctorName}`;
-  const reviewPatients = patients.filter((patient) => patient.status === "review");
-  const improvingPatients = patients.filter((patient) => patient.baseline && patient.baseline > patient.score);
-  const totalCredits = patients.reduce((sum, patient) => sum + protocols[patient.protocol].credits, 0);
+  const allPatients = useMemo(() => [
+    ...patients.map((p) => ({ ...p, ...patientOverrides[p.id] })),
+    ...acceptedPatients.map((p) => ({ ...p, ...patientOverrides[p.id] })),
+  ], [patientOverrides, acceptedPatients]);
+  const pendingRequests = requestList.filter((r) => r.status === "pending");
+  const reviewPatients = allPatients.filter((p) => p.score >= 75 && !p.approved && !p.referred);
+  const improvingPatients = allPatients.filter((p) => p.baseline && p.baseline > p.score);
+  const trialEndingPatients = allPatients.filter((p) => p.protocol === "trial" && p.daysOn >= 4 && !p.referred);
+  const inactivePatients = allPatients.filter((p) => p.history?.[0]?.type === "pt_inactive");
+  const bigImprovementPatients = allPatients.filter((p) => p.baseline && (p.baseline - p.score) >= 10 && !p.patientNote);
+  const totalCredits = allPatients.reduce((sum, patient) => sum + protocols[patient.protocol].credits, 0);
   const redeemedCredits = 15000;
   const availableCredits = Math.max(0, totalCredits - redeemedCredits);
-  const selectedPatient = patients.find((patient) => patient.id === selectedPatientId) ?? patients[0];
+  const getPatient = (id: number) => {
+    const base = [...patients, ...acceptedPatients].find((p) => p.id === id);
+    if (!base) return base;
+    return { ...base, ...patientOverrides[id] };
+  };
+  const selectedPatient = getPatient(selectedPatientId ?? patients[0]?.id) ?? patients[0];
   const latestEarnings = protocols.grow.credits;
   const confirmedAmount = Math.min(Math.max(redeemAmount, 0), availableCredits);
 
@@ -517,14 +710,55 @@ export function DoctorDashboardContent() {
   };
 
   const openDetail = (id: number) => {
-    const patient = patients.find((p) => p.id === id);
-    if (patient?.status === "review") {
-      router.push(`/doctor/medicalreview?id=${id}`);
-      return;
-    }
     setSelectedPatientId(id);
     setDetailTab("summary");
     setPortalView("detail");
+  };
+
+  const applyPatientOverride = (id: number, override: Partial<Patient>) => {
+    setPatientOverrides((prev) => {
+      const current = prev[id] || {};
+      return { ...prev, [id]: { ...current, ...override } };
+    });
+  };
+
+  const handleApproveProtocol = (id: number, action: "approve" | "modify") => {
+    const labels: Record<string, string> = { approve: "Approved", modify: "Approved (Modified Dose)" };
+    const approvalDate = new Date().toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+    const approvalType = labels[action];
+    const histEvent: HistoryEvent = { type: "approval", text: `Protocol ${approvalType}`, label: approvalType, by: `Dr. ${doctorName}`, date: approvalDate, action };
+    const base = [...patients, ...acceptedPatients].find((p) => p.id === id);
+    const current = patientOverrides[id] || {};
+    applyPatientOverride(id, {
+      approved: true,
+      approvalType,
+      approvalDate,
+      history: [histEvent, ...(current.history || base?.history || [])],
+    });
+  };
+
+  const handleSendNote = (id: number, text: string) => {
+    const date = new Date().toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+    const histEvent: HistoryEvent = { type: "note", text, date };
+    const base = [...patients, ...acceptedPatients].find((p) => p.id === id);
+    const current = patientOverrides[id] || {};
+    applyPatientOverride(id, {
+      patientNote: text,
+      patientNoteDate: date,
+      lastMsgDate: Date.now(),
+      history: [histEvent, ...(current.history || base?.history || [])],
+    });
+  };
+
+  const handleSaveObs = (id: number, chips: string[], note: string) => {
+    const date = new Date().toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+    const text = chips.length ? chips.join(", ") + (note ? " — " + note : "") : note || "General observation";
+    const histEvent: HistoryEvent = { type: "obs", text, date };
+    const base = [...patients, ...acceptedPatients].find((p) => p.id === id);
+    const current = patientOverrides[id] || {};
+    applyPatientOverride(id, {
+      history: [histEvent, ...(current.history || base?.history || [])],
+    });
   };
 
   const reviewRedeem = () => {
@@ -540,20 +774,82 @@ export function DoctorDashboardContent() {
     setPortalView("receipt");
   };
 
+  const workQueueItems = useMemo(() => {
+    type WqItem = { key: string; iconBg: string; iconColor: string; iconType: "user-plus" | "alert" | "clock" | "pause" | "trend"; name: string; sub: string; badge: string; badgeColor: string; onClick: () => void };
+    const items: WqItem[] = [];
+    pendingRequests.slice(0, 2).forEach((r) => {
+      items.push({ key: r.id, iconBg: "rgba(59,130,200,.12)", iconColor: "var(--doc-blue)", iconType: "user-plus", name: r.name, sub: `${r.age}${r.sex} · GLIS ${r.score} · ${protocols[r.protocol].name}`, badge: "New request", badgeColor: "var(--doc-blue)", onClick: () => { setSelectedRequestId(r.id); setPortalView("request"); } });
+    });
+    reviewPatients.forEach((p) => {
+      items.push({ key: `review-${p.id}`, iconBg: "rgba(212,32,32,.12)", iconColor: "var(--doc-red)", iconType: "alert", name: p.name, sub: `${p.age}${p.sex} · GLIS ${p.score} · ${protocols[p.protocol].name}`, badge: "Review →", badgeColor: "var(--doc-red)", onClick: () => openDetail(p.id) });
+    });
+    trialEndingPatients.forEach((p) => {
+      items.push({ key: `trial-${p.id}`, iconBg: "rgba(212,168,64,.10)", iconColor: "var(--doc-gold)", iconType: "clock", name: p.name, sub: `Trial ending · Day ${p.daysOn} · GLIS ${p.score}`, badge: "Upgrade →", badgeColor: "var(--doc-gold)", onClick: () => openDetail(p.id) });
+    });
+    inactivePatients.slice(0, 2).forEach((p) => {
+      items.push({ key: `inactive-${p.id}`, iconBg: "rgba(232,119,46,.10)", iconColor: "var(--doc-orange)", iconType: "pause", name: p.name, sub: `Inactive · Day ${p.daysOn} of ${protocols[p.protocol].days}`, badge: "Check in →", badgeColor: "var(--doc-orange)", onClick: () => openDetail(p.id) });
+    });
+    bigImprovementPatients.slice(0, 1).forEach((p) => {
+      const drop = p.baseline! - p.score;
+      items.push({ key: `improve-${p.id}`, iconBg: "rgba(92,184,130,.10)", iconColor: "var(--doc-green)", iconType: "trend", name: p.name, sub: `↓${drop} pts improvement · Day ${p.daysOn}`, badge: "Send note", badgeColor: "var(--doc-green)", onClick: () => openDetail(p.id) });
+    });
+    return items.slice(0, 6);
+  }, [pendingRequests, reviewPatients, trialEndingPatients, inactivePatients, bigImprovementPatients]);
+
+  const handleAcceptRequest = (rid: string) => {
+    const req = requestList.find((r) => r.id === rid);
+    if (!req) return;
+    const enrollDate = new Date().toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+    const newPt: Patient = {
+      id: Date.now(),
+      name: req.name,
+      age: req.age,
+      sex: req.sex,
+      protocol: req.protocol,
+      score: req.score,
+      baseline: req.score,
+      daysOn: 0,
+      symptoms: req.mkv.map((m) => m.k).join(", "),
+      note: "Accepted from request",
+      lab: req.lab,
+      scanDate: req.scanDate,
+      lastEvent: "Accepted",
+      status: "review",
+      history: [{ type: "pt_enroll", text: `Accepted — ${protocols[req.protocol].name} Protocol assigned`, date: enrollDate }],
+    };
+    setAcceptedPatients((prev) => [...prev, newPt]);
+    setRequestList((prev) => prev.map((r) => r.id === rid ? { ...r, status: "accepted" as const } : r));
+    setPortalView("dashboard");
+  };
+
+  const handleDeclineRequest = (rid: string) => {
+    setRequestList((prev) => prev.map((r) => r.id === rid ? { ...r, status: "declined" as const } : r));
+    setPortalView("dashboard");
+  };
+
+  const weekCredits = allPatients
+    .filter((p) => p.daysOn <= 7)
+    .reduce((sum, p) => sum + protocols[p.protocol].credits, 0);
+  const trialEndingCount = trialEndingPatients.length;
+
   const filteredPatients = useMemo(() => {
     const search = query.trim().toLowerCase();
-
-    if (!search) {
-      return patients;
-    }
-
-    return patients.filter((patient) =>
-      [patient.name, patient.symptoms, protocols[patient.protocol].name, patient.lab]
-        .join(" ")
-        .toLowerCase()
-        .includes(search)
-    );
-  }, [query]);
+    const list = search
+      ? allPatients.filter((patient) =>
+          [patient.name, patient.symptoms, protocols[patient.protocol].name, patient.lab]
+            .join(" ")
+            .toLowerCase()
+            .includes(search)
+        )
+      : allPatients;
+    return list.slice().sort((a, b) => {
+      const aImp = a.baseline ? a.baseline - a.score : 0;
+      const bImp = b.baseline ? b.baseline - b.score : 0;
+      if (aImp > 0 && bImp <= 0) return -1;
+      if (bImp > 0 && aImp <= 0) return 1;
+      return b.score - a.score;
+    });
+  }, [query, allPatients]);
 
   if (loading) {
     return (
@@ -624,6 +920,15 @@ export function DoctorDashboardContent() {
           />
         ) : null}
 
+        {portalView === "request" && selectedRequestId ? (
+          <RequestDetailScreen
+            request={requestList.find((r) => r.id === selectedRequestId)!}
+            onBack={() => setPortalView("dashboard")}
+            onAccept={handleAcceptRequest}
+            onDecline={handleDeclineRequest}
+          />
+        ) : null}
+
         {portalView === "detail" && selectedPatient ? (
           <PatientDetailScreen
             patient={selectedPatient}
@@ -631,6 +936,9 @@ export function DoctorDashboardContent() {
             tab={detailTab}
             onTabChange={setDetailTab}
             onBack={() => setPortalView("dashboard")}
+            onApprove={(action) => handleApproveProtocol(selectedPatient.id, action)}
+            onSendNote={(text) => handleSendNote(selectedPatient.id, text)}
+            onSaveObs={(chips, note) => handleSaveObs(selectedPatient.id, chips, note)}
           />
         ) : null}
 
@@ -681,13 +989,13 @@ export function DoctorDashboardContent() {
             <div>
               <div className="eyebrow">Active Patients</div>
               <div className="hero-count">
-                <strong>{patients.length}</strong>
+                <strong>{allPatients.length}</strong>
                 <span>patients</span>
               </div>
               <div className={reviewPatients.length ? "hero-sub review" : "hero-sub"}>
                 {reviewPatients.length
-                  ? `${reviewPatients.length} patient needs review - ${requests.length} new requests`
-                  : "All patients on track"}
+                  ? `${reviewPatients.length} patient${reviewPatients.length > 1 ? "s" : ""} need${reviewPatients.length === 1 ? "s" : ""} review${pendingRequests.length ? ` · ${pendingRequests.length} new request${pendingRequests.length > 1 ? "s" : ""}` : ""}`
+                  : pendingRequests.length ? `${pendingRequests.length} new request${pendingRequests.length > 1 ? "s" : ""} pending` : "All patients on track"}
               </div>
             </div>
             <div className="credits">
@@ -699,7 +1007,7 @@ export function DoctorDashboardContent() {
 
           {reviewPatients.length ? (
             <div className="urgent-pad">
-              <button className="urgent-banner" type="button" onClick={() => router.push(`/doctor/medicalreview?id=${reviewPatients[0].id}`)}>
+              <button className="urgent-banner" type="button" onClick={() => openDetail(reviewPatients[0].id)}>
                 <span className="urgent-icon"><AlertIcon /></span>
                 <span className="urgent-copy">
                   <span className="urgent-title">{reviewPatients.length} patient{reviewPatients.length > 1 ? "s" : ""} need{reviewPatients.length === 1 ? "s" : ""} medical review</span>
@@ -720,54 +1028,42 @@ export function DoctorDashboardContent() {
               <span>Review</span>
             </div>
             <div className="stat-pill stat-blue">
-              <strong>{requests.length}</strong>
+              <strong>{pendingRequests.length}</strong>
               <span>Requests</span>
             </div>
           </div>
         </header>
 
         <main className="content-card">
-          <section className="queue-list" aria-labelledby="today-heading">
-            <div className="section-label" id="today-heading">Today</div>
-            {requests.map((request) => (
-              <QueueItem
-                key={request.id}
-                tone="blue"
-                name={request.name}
-                sub={`${request.age}${request.sex} - GLIS ${request.score} - ${protocols[request.protocol].name}`}
-                badge="New request"
-              />
-            ))}
-            {reviewPatients.map((patient) => (
-              <QueueItem
-                key={patient.id}
-                tone="red"
-                name={patient.name}
-                sub={`${patient.age}${patient.sex} · GLIS ${patient.score} · ${protocols[patient.protocol].name}`}
-                badge="Review →"
-                onClick={() => router.push(`/doctor/medicalreview?id=${patient.id}`)}
-              />
-            ))}
-            {patients.filter((patient) => patient.status === "trial").map((patient) => (
-              <QueueItem
-                key={patient.id}
-                tone="gold"
-                name={patient.name}
-                sub={`Trial ending - Day ${patient.daysOn} - GLIS ${patient.score}`}
-                badge="Upgrade"
-                onClick={() => setSelectedPatientId(patient.id)}
-              />
+          {/* Work queue — urgency-first */}
+          <section className="queue-list">
+            {workQueueItems.length === 0 && allPatients.length > 0 ? (
+              <div className="all-clear">
+                <CheckIcon size={13} /> All patients on track. Nothing urgent today.
+              </div>
+            ) : null}
+            {workQueueItems.map((item, idx) => (
+              <WqItem key={item.key} item={item} delay={idx * 60} />
             ))}
           </section>
 
-          <div className="today-card">
-            <span className="queue-icon" style={{ background: "rgba(92,184,130,.10)", color: "var(--doc-green)" }}>
-              <ClockIcon />
-            </span>
-            <span style={{ fontSize: 16, color: "var(--doc-d1)" }}>
-              <strong>{formatNumber(creditsThisWeek())} credits</strong> earned this week
-            </span>
-          </div>
+          {/* Today notices — credits / trial summary */}
+          {(weekCredits > 0 || trialEndingCount > 0) ? (
+            <div className="today-notices">
+              {weekCredits > 0 ? (
+                <div className="today-notice" style={{ background: "rgba(92,184,130,.04)", border: "1px solid rgba(92,184,130,.08)" }}>
+                  <div className="today-notice-icon" style={{ background: "rgba(92,184,130,.10)", color: "var(--doc-green)" }}><ClockIcon /></div>
+                  <span><strong style={{ color: "var(--doc-green)" }}>{formatNumber(weekCredits)} credits</strong> earned this week</span>
+                </div>
+              ) : null}
+              {trialEndingCount > 0 ? (
+                <div className="today-notice" style={{ background: "rgba(212,168,64,.04)", border: "1px solid rgba(212,168,64,.08)" }}>
+                  <div className="today-notice-icon" style={{ background: "rgba(212,168,64,.10)", color: "var(--doc-gold)" }}><ClockIcon /></div>
+                  <span><strong style={{ color: "var(--doc-gold)" }}>{trialEndingCount} trial{trialEndingCount > 1 ? "s" : ""} ending</strong> — review continuation</span>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="search-wrap">
             <SearchIcon />
@@ -779,21 +1075,14 @@ export function DoctorDashboardContent() {
             />
           </div>
 
-          <section aria-labelledby="requests-heading">
-            <div className="section-label" id="requests-heading">Incoming Requests</div>
-            {requests.map((request) => (
-              <RequestCard key={request.id} request={request} />
-            ))}
-          </section>
-
           <section aria-labelledby="patients-heading" style={{ marginTop: 14 }}>
             <div className="section-label" id="patients-heading">Patients</div>
             {filteredPatients.length ? (
-              filteredPatients.map((patient) => (
+              filteredPatients.map((patient, idx) => (
                 <PatientCard
                   key={patient.id}
                   patient={patient}
-                  selected={false}
+                  index={idx}
                   onOpen={() => openDetail(patient.id)}
                 />
               ))
@@ -811,8 +1100,8 @@ export function DoctorDashboardContent() {
           </div>
 
           <footer className="footer-note">
-            GutGuard Protocol - Licensed Lifestyle Supplement - 2026 GutGuard Philippines<br />
-            SEC Registration - FDA Notification - LTO License
+            GutGuard Protocol · Licensed Lifestyle Supplement · © 2026 GutGuard Philippines<br />
+            SEC Registration · FDA Notification · LTO License
           </footer>
         </main>
         </>
@@ -1190,99 +1479,101 @@ function ReceiptRow({ label, value }: { label: string; value: string }) {
 
 const DECLINE_REASONS = ["Not appropriate", "Protocol mismatch", "At capacity", "Duplicate"];
 
-function RequestCard({ request }: { request: Request }) {
-  const [accepted, setAccepted] = useState(false);
-  const [declining, setDeclining] = useState(false);
-  const [reason, setReason] = useState("");
-  const [declined, setDeclined] = useState(false);
 
-  if (accepted) {
-    return (
-      <div className="request-card" style={{ borderLeft: "3px solid var(--doc-green)" }}>
-        <div style={{ padding: "14px 0 2px", display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(92,184,130,.15)", border: "1px solid rgba(92,184,130,.30)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--doc-green)", flexShrink: 0 }}><CheckIcon size={14} /></span>
-          <span style={{ fontSize: 15, fontWeight: 750, color: "var(--doc-green)" }}>{request.name} accepted</span>
-        </div>
-      </div>
-    );
-  }
+function DrRing({ score, size, numSize, dark }: { score: number; size: number; numSize: number; dark: boolean }) {
+  const col = sColDr(score);
+  const targetDeg = score * 3.6;
+  const [ra, setRa] = useState(0);
 
-  if (declined) return null;
+  useEffect(() => {
+    // Double rAF: first frame paints at 0, second frame triggers the CSS transition
+    let f1: number, f2: number;
+    f1 = requestAnimationFrame(() => {
+      f2 = requestAnimationFrame(() => setRa(targetDeg));
+    });
+    return () => { cancelAnimationFrame(f1); cancelAnimationFrame(f2); };
+  }, [targetDeg]);
 
   return (
-    <div className="request-card">
-      <div className="request-top">
-        <ScoreRing score={request.score} />
-        <div className="request-body">
-          <div className="request-title">
-            <strong>{request.name}</strong>
-            <span className="badge" style={{ color: "var(--doc-blue)", background: "rgba(59,130,200,.10)" }}>{request.timeLeft}</span>
-          </div>
-          <div className="request-meta">
-            {request.age}{request.sex} · {protocols[request.protocol].name} Protocol · {request.source}
-          </div>
-        </div>
-      </div>
-      <div style={{ marginTop: 12 }}>
-        <button className="req-accept-btn" type="button" onClick={() => setAccepted(true)}>
-          <CheckIcon size={16} /> Accept Patient
-        </button>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0 0" }}>
-          <button className="req-decline-text" type="button" onClick={() => setDeclining((v) => !v)}>
-            {declining ? "Cancel" : "Decline"}
-          </button>
-          {declining && reason ? (
-            <button
-              type="button"
-              style={{ background: "none", border: "1px solid var(--doc-red)", borderRadius: 8, color: "var(--doc-red)", fontSize: 13, fontWeight: 750, padding: "5px 12px", cursor: "pointer", fontFamily: "var(--doc-font)" }}
-              onClick={() => setDeclined(true)}
-            >
-              Confirm decline
-            </button>
-          ) : null}
-        </div>
-        {declining ? (
-          <div className="decline-reasons">
-            <div style={{ paddingTop: 8 }}>
-              {DECLINE_REASONS.map((r) => (
-                <button key={r} className={`reason-chip${reason === r ? " on" : ""}`} type="button" onClick={() => setReason(r === reason ? "" : r)}>{r}</button>
-              ))}
-            </div>
-          </div>
-        ) : null}
+    <div className="dr-ring" style={{ width: size, height: size }}>
+      <div className={dark ? "dr-ring-trk" : "dr-ring-trk-lt"} />
+      <div className="dr-ring-fill" style={{ "--ra": `${ra}deg` } as React.CSSProperties} />
+      <div className="dr-ring-c">
+        <span style={{ fontSize: numSize, fontWeight: 800, color: col, lineHeight: 1 }}>{score}</span>
       </div>
     </div>
   );
 }
 
-function PatientCard({ patient, selected, onOpen }: { patient: Patient; selected: boolean; onOpen: () => void }) {
+function PatientCard({ patient, index, onOpen }: { patient: Patient; index: number; onOpen: () => void }) {
   const protocol = protocols[patient.protocol];
-  const progress = Math.min(100, Math.round((patient.daysOn / protocol.days) * 100));
-  const badge = getPatientBadge(patient);
-  const action = getPatientAction(patient);
-  const scoreColor = getScoreColor(patient.score);
+  const drop = patient.baseline ? patient.baseline - patient.score : 0;
+  const progress = protocol.days > 0 ? Math.min(100, Math.round((patient.daysOn / protocol.days) * 100)) : 0;
+  const col = sColDr(patient.score);
+  const [barReady, setBarReady] = useState(false);
+
+  useEffect(() => {
+    let f1: number, f2: number;
+    f1 = requestAnimationFrame(() => { f2 = requestAnimationFrame(() => setBarReady(true)); });
+    return () => { cancelAnimationFrame(f1); cancelAnimationFrame(f2); };
+  }, []);
+
+  const isHighRisk = patient.score >= 70 && !patient.approved;
+  const isTrialEnding = patient.protocol === "trial" && patient.daysOn >= 4;
+  const isInactive = patient.history?.[0]?.type === "pt_inactive";
+  const daysLeft = Math.max(0, protocol.days - patient.daysOn);
+  const scanDue = patient.daysOn > 0 && daysLeft <= 5 && patient.protocol !== "trial";
+
+  const cardClass = isHighRisk
+    ? "pt-card pt-card-danger"
+    : isTrialEnding || isInactive
+    ? "pt-card pt-card-warn"
+    : drop > 0
+    ? "pt-card pt-card-ok"
+    : "pt-card pt-card-std";
+
+  let badge = "", badgeCol = "";
+  if (isHighRisk) { badge = "⚠ Review"; badgeCol = "var(--doc-red)"; }
+  else if (isTrialEnding) { badge = "⏰ Trial ending"; badgeCol = "var(--doc-gold)"; }
+  else if (isInactive) { badge = "Inactive"; badgeCol = "var(--doc-orange)"; }
+  else if (drop > 0) { badge = `↓${drop} pts`; badgeCol = "var(--doc-green)"; }
+  else if (scanDue) { badge = "Scan due"; badgeCol = "var(--doc-blue)"; }
+
+  let actionLabel = "", actionCls = "pt-card-cta action-btn-bl";
+  if (isTrialEnding) { actionLabel = "View trial status →"; actionCls = "pt-card-cta action-btn-gld"; }
+  else if (isHighRisk) { actionLabel = "Review →"; actionCls = "pt-card-cta action-btn-red"; }
+  else if (isInactive) { actionLabel = "Send check-in"; actionCls = "pt-card-cta action-btn-gld"; }
+  else if (scanDue && !patient.baseline) { actionLabel = "Remind to scan"; actionCls = "pt-card-cta action-btn-bl"; }
+  else if (drop > 0) { actionLabel = "View progress"; actionCls = "pt-card-cta action-btn-grn"; }
 
   return (
-    <button className="patient-card" type="button" onClick={onOpen} style={{ outline: selected ? "2px solid rgba(59,130,200,.28)" : undefined }}>
-      <div className="patient-main">
-        <div className="patient-top">
-          <ScoreRing score={patient.score} />
-          <div className="patient-body">
-            <div className="patient-name">
-              <strong>{patient.name}</strong>
-              {badge ? <span className="badge" style={{ color: badge.color, background: badge.background }}>{badge.label}</span> : null}
+    <button className={cardClass} type="button" onClick={onOpen} style={{ animationDelay: `${index * 55}ms` }}>
+      <div className="pt-card-body">
+        <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+          <DrRing score={patient.score} size={40} numSize={12} dark={false} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
+              <div className="pt-card-name">{patient.name}</div>
+              {badge ? (
+                <div className="pt-card-badge" style={{ color: badgeCol, background: `${badgeCol}18` }}>{badge}</div>
+              ) : null}
             </div>
-            <div className="patient-meta">
-              {protocol.name} - Day {patient.daysOn} - {patient.age}{patient.sex}
-            </div>
+            <div className="pt-card-meta">{protocol.name} · Day {patient.daysOn} · {patient.age}{patient.sex}</div>
           </div>
         </div>
-        <div className="bar">
-          <span style={{ width: `${progress}%`, background: scoreColor }} />
+        <div className="pt-card-bar">
+          <div className="pt-card-bar-fill" style={{ width: barReady ? `${progress}%` : "0%", background: col }} />
         </div>
       </div>
-      <div className="patient-action">
-        <span style={{ color: action.color, borderColor: `${action.color}33` }}>{action.label}</span>
+      <div className="pt-card-action" style={{ visibility: actionLabel ? "visible" : "hidden" }}>
+        <button
+          type="button"
+          className={actionCls}
+          onClick={(e) => { e.stopPropagation(); onOpen(); }}
+          style={{ color: actionLabel ? badgeCol || col : "transparent" }}
+        >
+          {actionLabel || " "}
+        </button>
       </div>
     </button>
   );
@@ -1323,32 +1614,18 @@ function DetailCell({ label, value }: { label: string; value: string }) {
   );
 }
 
-function QueueItem({
-  badge,
-  name,
-  onClick,
-  sub,
-  tone,
-}: {
-  badge: string;
-  name: string;
-  onClick?: () => void;
-  sub: string;
-  tone: "blue" | "red" | "gold";
-}) {
-  const color = tone === "red" ? "var(--doc-red)" : tone === "gold" ? "var(--doc-gold)" : "var(--doc-blue)";
-  const background = tone === "red" ? "rgba(212,32,32,.10)" : tone === "gold" ? "rgba(212,168,64,.10)" : "rgba(59,130,200,.12)";
+type WqItemData = { key: string; iconBg: string; iconColor: string; iconType: "user-plus" | "alert" | "clock" | "pause" | "trend"; name: string; sub: string; badge: string; badgeColor: string; onClick: () => void };
 
+function WqItem({ item, delay }: { item: WqItemData; delay: number }) {
+  const icon = item.iconType === "alert" ? <AlertIcon /> : item.iconType === "clock" ? <ClockIcon /> : item.iconType === "pause" ? <PauseIcon /> : item.iconType === "trend" ? <TrendIcon /> : <UserPlusIcon />;
   return (
-    <button className="queue-item" type="button" onClick={onClick} style={{ width: "100%", textAlign: "left" }}>
-      <span className="queue-icon" style={{ background, color }}>
-        {tone === "red" ? <AlertIcon /> : tone === "gold" ? <ClockIcon /> : <UserPlusIcon />}
-      </span>
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span className="queue-name">{name}</span>
-        <span className="queue-sub">{sub}</span>
-      </span>
-      <span className="queue-badge" style={{ color, background }}>{badge}</span>
+    <button className="wq-item" type="button" onClick={item.onClick} style={{ animationName: "reqSlideIn", animationDuration: ".3s", animationTimingFunction: "cubic-bezier(.32,1,.68,1)", animationFillMode: "both", animationDelay: `${delay}ms` }}>
+      <div className="wq-icon" style={{ background: item.iconBg, color: item.iconColor }}>{icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="wq-name">{item.name}</div>
+        <div className="wq-sub">{item.sub}</div>
+      </div>
+      <div className="wq-badge" style={{ color: item.badgeColor, background: item.iconBg }}>{item.badge}</div>
     </button>
   );
 }
@@ -1433,6 +1710,37 @@ function getScoreColor(score: number) {
   if (score <= 50) return "#d4a840";
   if (score <= 75) return "#e8772e";
   return "#d42020";
+}
+
+function lC(a: string, b: string, t: number) {
+  const p = (x: string) => [parseInt(x.slice(1, 3), 16), parseInt(x.slice(3, 5), 16), parseInt(x.slice(5, 7), 16)];
+  const c1 = p(a), c2 = p(b);
+  const h = (v: number) => Math.round(v).toString(16).padStart(2, "0");
+  return `#${h(c1[0] + (c2[0] - c1[0]) * t)}${h(c1[1] + (c2[1] - c1[1]) * t)}${h(c1[2] + (c2[2] - c1[2]) * t)}`;
+}
+
+function sColDr(s: number) {
+  if (s <= 25) return lC("#34A853", "#5CB882", s / 25);
+  if (s <= 50) return lC("#5CB882", "#E8B230", (s - 25) / 25);
+  if (s <= 75) return lC("#E8B230", "#E8772E", (s - 50) / 25);
+  return lC("#E8772E", "#D42020", (s - 75) / 25);
+}
+
+function imsiCalc(s: number) {
+  const inflDomain = Math.min(50, Math.round(s * 0.52));
+  const metDomain = Math.min(50, Math.round(s * 0.55));
+  const flags: string[] = [];
+  if (s >= 75) flags.push("hs-CRP >5");
+  if (s >= 85) flags.push("NLR >5");
+  if (s >= 90) flags.push("Glucose >125");
+  return { inflDomain, metDomain, flags };
+}
+
+function getScoreLabel(s: number) {
+  if (s <= 25) return "Optimal";
+  if (s <= 50) return "Mild inflammation";
+  if (s <= 75) return "Moderate inflammation";
+  return "High inflammation";
 }
 
 function creditsThisWeek() {
@@ -1591,31 +1899,267 @@ function CheckIcon({ size = 38 }: { size?: number }) {
   );
 }
 
+function PauseIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="10" y1="15" x2="10" y2="9" />
+      <line x1="14" y1="15" x2="14" y2="9" />
+    </svg>
+  );
+}
+
+function ShareLinkIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+    </svg>
+  );
+}
+
+function RequestDetailScreen({
+  request,
+  onBack,
+  onAccept,
+  onDecline,
+}: {
+  request: Request;
+  onBack: () => void;
+  onAccept: (rid: string) => void;
+  onDecline: (rid: string) => void;
+}) {
+  const [declining, setDeclining] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
+  const protocol = protocols[request.protocol];
+  const sourceLabel = request.source === "clinic" ? "Clinic QR Scan" : request.source === "referral" ? `Referred by ${request.referredBy}` : "Online Enrollment";
+  const sourceColor = request.source === "clinic" ? "rgba(92,184,130,.80)" : request.source === "referral" ? "rgba(59,130,200,.80)" : "rgba(154,151,143,.80)";
+  const timeLeft = formatTimeLeft(request.deadline);
+
+  return (
+    <div className="req-screen">
+      <div className="req-sticky-nav">
+        <div className="req-nav-row">
+          <button type="button" onClick={onBack} style={{ background: "none", border: "none", fontSize: 16, fontWeight: 700, color: "var(--doc-d3)", padding: "8px 0", cursor: "pointer" }}>← Back</button>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--doc-d1)" }}>New Request</div>
+          <div style={{ width: 48 }} />
+        </div>
+      </div>
+
+      <div className="req-body">
+        {/* Hero identity */}
+        <div style={{ display: "flex", alignItems: "center", gap: 13, padding: "14px 0 12px" }}>
+          <DrRing score={request.score} size={52} numSize={15} dark={false} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: "var(--doc-d1)" }}>{request.name}</div>
+            <div style={{ fontSize: 14, color: "var(--doc-d3)", marginTop: 3 }}>{request.age}{request.sex} · {request.lab}</div>
+            <div style={{ fontSize: 13, color: "var(--doc-d3)" }}>{request.scanDate}</div>
+            <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 20, background: "rgba(212,32,32,.07)", border: "1px solid rgba(212,32,32,.14)" }}>
+              <AlertIcon />
+              <span style={{ fontSize: 12, fontWeight: 700, color: request.riskCol }}>{request.risk}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Source tag */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16 }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: sourceColor, flexShrink: 0 }} />
+          <span style={{ fontSize: 13, color: "var(--doc-d3)", fontWeight: 600 }}>{sourceLabel}</span>
+          <span style={{ fontSize: 12, color: "var(--doc-d4)", marginLeft: "auto", fontWeight: 700 }}>{timeLeft}</span>
+        </div>
+
+        {/* Elevated markers */}
+        {request.mkv.length > 0 ? (
+          <>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--doc-d4)", letterSpacing: ".10em", textTransform: "uppercase", marginBottom: 8 }}>Elevated Markers</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
+              {request.mkv.map((m) => (
+                <div key={m.k} className="mkv-pill">
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--doc-red)" }}>{m.k}</span>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: "var(--doc-d1)", margin: "0 4px" }}>{m.v}</span>
+                  <span style={{ fontSize: 12, color: "var(--doc-d3)" }}>{m.u}</span>
+                  {m.hi ? <span style={{ color: "var(--doc-red)", fontSize: 11, fontWeight: 700 }}>↑</span> : null}
+                </div>
+              ))}
+            </div>
+          </>
+        ) : null}
+
+        {/* Patient note */}
+        {request.note ? (
+          <>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--doc-d4)", letterSpacing: ".10em", textTransform: "uppercase", marginBottom: 8 }}>Patient&apos;s Note</div>
+            <div style={{ padding: "12px 14px", background: "var(--doc-lt)", borderRadius: 12, borderLeft: "3px solid var(--doc-blue)", marginBottom: 16 }}>
+              <div style={{ fontSize: 15, color: "var(--doc-d2)", lineHeight: 1.6, fontStyle: "italic" }}>&ldquo;{request.note}&rdquo;</div>
+            </div>
+          </>
+        ) : null}
+
+        {/* Referral */}
+        {request.referredBy ? (
+          <div style={{ padding: "10px 13px", background: "rgba(92,184,130,.05)", border: "1px solid rgba(92,184,130,.12)", borderRadius: 10, marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
+            <ShareLinkIcon />
+            <span style={{ fontSize: 13, color: "var(--doc-d2)" }}>Referred by <strong>{request.referredBy}</strong></span>
+          </div>
+        ) : null}
+
+        {/* Protocol */}
+        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--doc-d4)", letterSpacing: ".10em", textTransform: "uppercase", marginBottom: 8 }}>Recommended Protocol</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 16px", background: "var(--doc-white)", borderRadius: 12, border: "1px solid var(--doc-lt2)", marginBottom: 24 }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--doc-d1)" }}>{protocol.name} Protocol</div>
+            <div style={{ fontSize: 13, color: "var(--doc-d3)", marginTop: 2 }}>{protocol.days} days · {protocol.price}</div>
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--doc-green)" }}>₱{formatNumber(protocol.credits)} credits</div>
+        </div>
+
+        {/* Accept / Decline */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="req-accept-btn" style={{ flex: 3 }} type="button" onClick={() => onAccept(request.id)}>
+            <CheckIcon size={14} /> Accept Patient
+          </button>
+          <button className="req-decline-btn" type="button" onClick={() => setDeclining((v) => !v)}>
+            {declining ? "Cancel" : "Decline"}
+          </button>
+        </div>
+
+        {declining ? (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 13, color: "var(--doc-d3)", marginBottom: 8 }}>Reason for declining:</div>
+            <div>
+              {DECLINE_REASONS.map((r) => (
+                <button key={r} className={`req-reason-chip${declineReason === r ? " on" : ""}`} type="button" onClick={() => setDeclineReason(r === declineReason ? "" : r)}>{r}</button>
+              ))}
+            </div>
+            {declineReason ? (
+              <button type="button" onClick={() => onDecline(request.id)} style={{ marginTop: 12, width: "100%", padding: "12px", borderRadius: 12, border: "1px solid var(--doc-red)", background: "rgba(212,32,32,.05)", color: "var(--doc-red)", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "var(--doc-font)" }}>
+                Confirm decline
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function formatTimeLeft(deadline: number) {
+  const ms = deadline - Date.now();
+  if (ms <= 0) return "Expired";
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  if (h >= 1) return `${h}h ${m}m left`;
+  return `${m}m left`;
+}
+
 function PatientDetailScreen({
   patient,
   email,
   tab,
   onTabChange,
   onBack,
+  onApprove,
+  onSendNote,
+  onSaveObs,
 }: {
   patient: Patient;
   email: string;
   tab: DetailTab;
   onTabChange: (t: DetailTab) => void;
   onBack: () => void;
+  onApprove: (action: "approve" | "modify") => void;
+  onSendNote: (text: string) => void;
+  onSaveObs: (chips: string[], note: string) => void;
 }) {
+  const [activePanel, setActivePanel] = useState<"message" | "observe" | null>(null);
+  const [noteText, setNoteText] = useState("");
+  const [obsChips, setObsChips] = useState<string[]>([]);
+  const [obsNote, setObsNote] = useState("");
+  const [expandedScans, setExpandedScans] = useState<Set<number>>(new Set());
+  const [domainsReady, setDomainsReady] = useState(false);
+  useEffect(() => {
+    let f1: number, f2: number;
+    f1 = requestAnimationFrame(() => { f2 = requestAnimationFrame(() => setDomainsReady(true)); });
+    return () => { cancelAnimationFrame(f1); cancelAnimationFrame(f2); };
+  }, []);
+
   const protocol = protocols[patient.protocol];
   const drop = patient.baseline ? patient.baseline - patient.score : 0;
-  const action = getPatientAction(patient);
+  const col = sColDr(patient.score);
+  const imsi = imsiCalc(patient.score);
+  const hasFlags = patient.score >= 75;
 
-  const history = [
-    { label: patient.lastEvent, date: patient.scanDate, color: drop > 0 ? "var(--doc-green)" : "var(--doc-blue)" },
-    { label: `${protocol.name} Protocol — Day ${patient.daysOn}`, date: patient.scanDate, color: "var(--doc-blue)" },
-    { label: `Lab: ${patient.lab}`, date: patient.scanDate, color: "var(--doc-d3)" },
-  ];
+  // Scan stepper: pull pt_scan events from history
+  const scanHistory: { score: number; date: string; col: string }[] = [];
+  const rawScans = (patient.history || []).filter((e) => e.type === "pt_scan").slice().reverse();
+  rawScans.forEach((e) => {
+    const m = e.text?.match(/(\d+)\s*[→—>]\s*(\d+)/);
+    if (m) {
+      if (scanHistory.length === 0) scanHistory.push({ score: parseInt(m[1]), date: e.date, col: sColDr(parseInt(m[1])) });
+      scanHistory.push({ score: parseInt(m[2]), date: e.date, col: sColDr(parseInt(m[2])) });
+    } else {
+      scanHistory.push({ score: patient.score, date: e.date, col });
+    }
+  });
+  if (!scanHistory.length) {
+    if (patient.baseline) scanHistory.push({ score: patient.baseline, date: patient.scanDate, col: sColDr(patient.baseline) });
+    scanHistory.push({ score: patient.score, date: patient.baseline ? "Latest" : patient.scanDate, col });
+  }
+  const numDots = Math.min(3, Math.max(scanHistory.length, 1));
+  const ordinals = ["1st", "2nd", "3rd"];
+
+  const ptSymptoms = (patient.history || []).filter((e) => e.type === "pt_symptom");
+  const isHighRisk = patient.score >= 75 && !patient.approved && !patient.referred;
+
+  // Sticky action
+  const isTrialEnding = patient.protocol === "trial" && patient.daysOn >= 4;
+  const isInactive = patient.history?.[0]?.type === "pt_inactive";
+  const bigDrop = drop >= 10;
+
+  let stickyLabel = "", stickyBg = "var(--doc-blue)", stickyGhost = false;
+  if (isHighRisk) { stickyLabel = "Review & approve protocol"; stickyBg = "var(--doc-red)"; }
+  else if (bigDrop && !patient.patientNote) { stickyLabel = "Send progress note"; stickyBg = "rgba(92,184,130,1)"; }
+  else if (isTrialEnding) { stickyLabel = "Recommend protocol upgrade"; stickyBg = "var(--doc-gold)"; }
+  else if (isInactive) { stickyLabel = "Send check-in"; stickyBg = "var(--doc-orange)"; }
+  else { stickyLabel = "View full history"; stickyGhost = true; }
+
+  const OBS_CHIPS = ["Fatigue", "Poor Sleep", "Bloating", "Brain Fog", "Low Energy", "Improved"];
+
+  const toggleObsChip = (chip: string) => {
+    setObsChips((prev) => prev.includes(chip) ? prev.filter((c) => c !== chip) : [...prev, chip]);
+  };
+
+  const submitNote = () => {
+    if (!noteText.trim()) return;
+    onSendNote(noteText.trim());
+    setNoteText("");
+    setActivePanel(null);
+  };
+
+  const submitObs = () => {
+    onSaveObs(obsChips, obsNote.trim());
+    setObsChips([]);
+    setObsNote("");
+    setActivePanel(null);
+  };
+
+  const toggleScanMarkers = (idx: number) => {
+    setExpandedScans((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx); else next.add(idx);
+      return next;
+    });
+  };
+
+  const MK_NAMES: Record<string, string> = { crp: "CRP", wbc: "WBC", neut: "Neut%", lymph: "Lymph%", glu: "Glucose", trig: "Trig", hdl: "HDL", alt: "ALT" };
+  const MK_UNITS: Record<string, string> = { crp: "mg/L", wbc: "×10³/µL", neut: "%", lymph: "%", glu: "mg/dL", trig: "mg/dL", hdl: "mg/dL", alt: "U/L" };
 
   return (
     <div className="detail-screen">
+      {/* Sticky nav */}
       <div className="detail-sticky-nav">
         <div className="detail-nav-row">
           <button onClick={onBack} style={{ background: "none", border: "none", fontSize: 16, fontWeight: 750, color: "var(--doc-d3)", padding: "8px 0", cursor: "pointer" }}>← Back</button>
@@ -1623,7 +2167,9 @@ function PatientDetailScreen({
           <div style={{ width: 48 }} />
         </div>
         <div className="detail-score-strip">
-          GLIS {patient.score}{drop > 0 ? ` · ${drop} pt improvement` : ""} · {patient.age}{patient.sex}
+          <span style={{ fontWeight: 800, color: col }}>{patient.score} GLIS</span>
+          <span style={{ color: "var(--doc-d4)", margin: "0 4px" }}>·</span>
+          <span style={{ color: "var(--doc-d3)" }}>{protocol.name} · Day {patient.daysOn} of {protocol.days}</span>
         </div>
         <div className="detail-tab-bar">
           <button className={`detail-tab${tab === "summary" ? " on" : ""}`} type="button" onClick={() => onTabChange("summary")}>Summary</button>
@@ -1633,49 +2179,370 @@ function PatientDetailScreen({
 
       {tab === "summary" ? (
         <div className="detail-tab-body">
-          <div className="detail-panel">
-            <div className="detail-head">
-              <div>
-                <h2 id="patient-detail-heading">{patient.name}</h2>
-                <p>{patient.age}{patient.sex} · {patient.lab}</p>
+          {/* Dark hero card */}
+          <div className="detail-enter" style={{ background: "linear-gradient(165deg,#0F1F38,#162D50)", borderRadius: 20, padding: "clamp(12px,4vw,20px)", marginBottom: 14, boxShadow: "0 6px 24px rgba(15,31,56,.30)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+              <DrRing score={patient.score} size={80} numSize={22} dark />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 17, fontWeight: 700, color: "rgba(255,255,255,.95)", marginBottom: 3 }}>{getScoreLabel(patient.score)}</div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,.62)" }}>{patient.age}{patient.sex} · {protocol.name} · Day {patient.daysOn} of {protocol.days}</div>
+                {drop > 0 ? (
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 8, padding: "4px 10px", borderRadius: 8, background: "rgba(92,184,130,.12)", border: "1px solid rgba(92,184,130,.2)" }}>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: "var(--doc-green)" }}>↓{drop} pts</span>
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,.58)" }}>from {patient.baseline}</span>
+                  </div>
+                ) : null}
               </div>
-              <ScoreRing score={patient.score} size={62} />
             </div>
-            <p className="detail-note">{patient.note}</p>
-            <div className="detail-grid">
-              <DetailCell label="Protocol" value={`${protocol.name} · ${protocol.days} days`} />
-              <DetailCell label="Credits" value={formatNumber(protocol.credits)} />
-              <DetailCell label="Latest Scan" value={patient.scanDate} />
-              <DetailCell label="Progress" value={drop > 0 ? `${drop} point improvement` : patient.lastEvent} />
-              <DetailCell label="Symptoms" value={patient.symptoms} />
-              <DetailCell label="Doctor Email" value={email || "Not provided"} />
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="detail-tab-body">
-          <div style={{ background: "var(--doc-white)", borderRadius: 16, padding: "0 20px", border: "1px solid var(--doc-lt2)" }}>
-            {history.map((event, i) => (
-              <div className="history-event" key={i}>
-                <div className="history-dot" style={{ background: event.color }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 15, fontWeight: 750, color: "var(--doc-d1)", lineHeight: 1.35 }}>{event.label}</div>
-                  <div style={{ fontSize: 13, color: "var(--doc-d3)", marginTop: 3 }}>{event.date}</div>
+
+            {/* IMSI domain bars */}
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,.06)" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", color: "rgba(212,32,32,.60)", textTransform: "uppercase" }}>Inflammatory</span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,.60)" }}>{imsi.inflDomain}/50</span>
+                  </div>
+                  <div className="domain-bar"><div className="domain-bar-fill" style={{ width: domainsReady ? `${Math.round(imsi.inflDomain / 50 * 100)}%` : "0%", background: "linear-gradient(90deg,#E8772E,#D42020)" }} /></div>
+                </div>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", color: "rgba(232,178,48,.60)", textTransform: "uppercase" }}>Metabolic</span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,.60)" }}>{imsi.metDomain}/50</span>
+                  </div>
+                  <div className="domain-bar"><div className="domain-bar-fill" style={{ width: domainsReady ? `${Math.round(imsi.metDomain / 50 * 100)}%` : "0%", background: "linear-gradient(90deg,#D4A840,#E8772E)" }} /></div>
                 </div>
               </div>
+              {imsi.flags.length > 0 ? (
+                <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 10, background: "rgba(212,32,32,.06)", border: "1px solid rgba(212,32,32,.12)", display: "flex", alignItems: "center", gap: 6 }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--doc-red)" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+                  <span style={{ fontSize: 12, color: "var(--doc-red)", fontWeight: 700 }}>{imsi.flags.join(" · ")}</span>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Scan stepper */}
+            <div style={{ display: "flex", alignItems: "center", marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,.06)" }}>
+              {Array.from({ length: numDots }).map((_, si) => {
+                const sc = si < scanHistory.length ? scanHistory[si] : null;
+                const label = ordinals[si] || `${si + 1}th`;
+                return (
+                  <React.Fragment key={si}>
+                    {si > 0 ? <div style={{ flex: 1, height: 1.5, background: sc ? "rgba(255,255,255,.18)" : "rgba(255,255,255,.04)" }} /> : null}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 44 }}>
+                      {sc ? (
+                        <>
+                          <div style={{ width: 28, height: 28, borderRadius: "50%", background: `${sc.col}22`, border: `1.5px solid ${sc.col}70`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: sc.col }}>{sc.score}</div>
+                          <div style={{ fontSize: 10, color: "rgba(255,255,255,.58)", marginTop: 3, fontWeight: 600 }}>{label}</div>
+                          {sc.date && sc.date !== "Latest" ? <div style={{ fontSize: 10, color: "rgba(255,255,255,.72)", marginTop: 1 }}>{sc.date}</div> : null}
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px dashed rgba(255,255,255,.12)", display: "flex", alignItems: "center", justifyContent: "center" }} />
+                          <div style={{ fontSize: 10, color: "rgba(255,255,255,.72)", marginTop: 3, fontWeight: 600 }}>{label}</div>
+                        </>
+                      )}
+                    </div>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Symptom pills */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 14 }}>
+            {patient.symptoms.split(", ").map((s) => (
+              <div key={s} style={{ padding: "6px 12px", borderRadius: 8, background: "var(--doc-white)", boxShadow: "0 1px 2px rgba(0,0,0,.02)", fontSize: 14, fontWeight: 700, color: "var(--doc-d2)" }}>{s}</div>
             ))}
           </div>
+
+          {/* Patient check-ins */}
+          {ptSymptoms.length > 0 ? (
+            <div style={{ padding: 14, borderRadius: 14, background: "rgba(232,178,48,.03)", border: "1px solid rgba(232,178,48,.08)", marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--doc-gold)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--doc-gold)" }}>Patient Check-ins</div>
+              </div>
+              {ptSymptoms.slice(0, 2).map((sy, si) => (
+                <div key={si} style={{ padding: "6px 0", borderBottom: si < Math.min(ptSymptoms.length, 2) - 1 ? "1px solid rgba(232,178,48,.06)" : "none" }}>
+                  <div style={{ fontSize: 15, color: "var(--doc-d2)", lineHeight: 1.4 }}>"{sy.text}"</div>
+                  <div style={{ fontSize: 11, color: "var(--doc-d4)", marginTop: 2 }}>{sy.date}</div>
+                </div>
+              ))}
+              {ptSymptoms.length > 2 ? (
+                <div style={{ fontSize: 13, color: "var(--doc-gold)", marginTop: 6, cursor: "pointer" }} onClick={() => onTabChange("history")}>+{ptSymptoms.length - 2} more in History →</div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* Protocol approval panel */}
+          {isHighRisk ? (
+            <div style={{ padding: 18, borderRadius: 16, background: "rgba(212,32,32,.04)", border: "1.5px solid rgba(212,32,32,.12)", marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--doc-red)" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--doc-red)" }}>Medical Review Required</div>
+              </div>
+              <div style={{ fontSize: 15, color: "var(--doc-d2)", lineHeight: 1.5, marginBottom: 14 }}>Elevated markers. Review and choose an action.</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <button type="button" style={{ width: "100%", padding: 12, borderRadius: 10, border: "none", background: "var(--doc-green)", color: "#fff", fontSize: 16, fontWeight: 700, fontFamily: "var(--doc-font)", cursor: "pointer", minHeight: 44 }} onClick={() => onApprove("approve")}>Approve Protocol</button>
+                <button type="button" style={{ width: "100%", padding: 12, borderRadius: 10, border: "1.5px solid var(--doc-blue)", background: "rgba(59,130,200,.04)", color: "var(--doc-blue)", fontSize: 16, fontWeight: 700, fontFamily: "var(--doc-font)", cursor: "pointer", minHeight: 44 }} onClick={() => onApprove("modify")}>Modified Dose</button>
+              </div>
+            </div>
+          ) : patient.approved ? (
+            <div style={{ padding: 14, borderRadius: 12, background: "rgba(92,184,130,.04)", border: "1px solid rgba(92,184,130,.10)", marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--doc-green)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--doc-green)" }}>Protocol {patient.approvalType}</div>
+                <div style={{ fontSize: 13, color: "var(--doc-d3)", marginTop: 1 }}>Dr. {email ? email.split("@")[0] : "Doctor"} · {patient.approvalDate}</div>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Action panel (message / observe) */}
+          {activePanel === "message" ? (
+            <div className="panel-in" style={{ background: "var(--doc-white)", borderRadius: 14, padding: "clamp(14px,4.5vw,20px)", boxShadow: "0 1px 3px rgba(0,0,0,.04)", marginBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--doc-d1)" }}>Message Patient</div>
+                <button type="button" style={{ width: 44, height: 44, borderRadius: 12, background: "var(--doc-lt)", border: "none", fontSize: 18, color: "var(--doc-d3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setActivePanel(null)}>×</button>
+              </div>
+              {patient.patientNote ? (
+                <div style={{ padding: "10px 12px", background: "var(--doc-lt)", borderRadius: 10, marginBottom: 10, borderLeft: "3px solid var(--doc-green)" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--doc-green)", letterSpacing: ".06em", textTransform: "uppercase", marginBottom: 2 }}>Last sent · {patient.patientNoteDate}</div>
+                  <div style={{ fontSize: 13, color: "var(--doc-d3)", lineHeight: 1.4 }}>{patient.patientNote}</div>
+                </div>
+              ) : null}
+              <textarea
+                value={noteText}
+                onChange={(e) => setNoteText(e.currentTarget.value)}
+                placeholder="Write a message to your patient..."
+                style={{ width: "100%", minHeight: 90, padding: "12px 14px", border: "1.5px solid var(--doc-lt3)", borderRadius: 12, fontSize: 15, color: "var(--doc-d1)", background: "var(--doc-white)", resize: "none", lineHeight: 1.6, outline: "none", fontFamily: "var(--doc-font)" }}
+              />
+              <button type="button" style={{ width: "100%", padding: 14, borderRadius: 12, border: "none", fontSize: 15, fontWeight: 700, background: "var(--doc-green)", color: "#fff", fontFamily: "var(--doc-font)", marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }} onClick={submitNote}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                Send Message
+              </button>
+            </div>
+          ) : activePanel === "observe" ? (
+            <div className="panel-in" style={{ background: "var(--doc-white)", borderRadius: 24, padding: "clamp(14px,4.5vw,24px)", boxShadow: "0 1px 3px rgba(0,0,0,.02)", marginBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--doc-d1)" }}>Record Observation</div>
+                <button type="button" style={{ width: 44, height: 44, borderRadius: 12, background: "var(--doc-lt)", border: "none", fontSize: 18, color: "var(--doc-d3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setActivePanel(null)}>×</button>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+                {OBS_CHIPS.map((chip) => (
+                  <button key={chip} type="button" onClick={() => toggleObsChip(chip)} style={{ padding: "9px 16px", borderRadius: 12, fontSize: 15, fontWeight: 700, border: `1.5px solid ${obsChips.includes(chip) ? "var(--doc-blue)" : "var(--doc-lt3)"}`, background: obsChips.includes(chip) ? "rgba(59,130,200,.06)" : "var(--doc-white)", color: obsChips.includes(chip) ? "var(--doc-blue)" : "var(--doc-d3)", cursor: "pointer", fontFamily: "var(--doc-font)", transition: "all .15s" }}>{chip}</button>
+                ))}
+              </div>
+              <textarea
+                value={obsNote}
+                onChange={(e) => setObsNote(e.currentTarget.value)}
+                placeholder="Optional note..."
+                style={{ width: "100%", minHeight: 56, padding: "12px 14px", border: "1.5px solid var(--doc-lt3)", borderRadius: 12, fontSize: 15, color: "var(--doc-d1)", background: "var(--doc-white)", resize: "none", lineHeight: 1.5, outline: "none", fontFamily: "var(--doc-font)" }}
+              />
+              <button type="button" style={{ width: "100%", padding: 16, borderRadius: 14, border: "none", fontSize: 15, fontWeight: 700, background: "var(--doc-blue)", color: "#fff", fontFamily: "var(--doc-font)", marginTop: 10, cursor: "pointer" }} onClick={submitObs}>Save Observation</button>
+            </div>
+          ) : (
+            <div id="actionBtns">
+              <button type="button" style={{ width: "100%", padding: 16, borderRadius: 14, border: "none", background: "var(--doc-blue)", color: "#fff", fontFamily: "var(--doc-font)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 16, fontWeight: 700, marginBottom: 8, minHeight: 52 }} onClick={() => { setNoteText(patient.patientNote || ""); setActivePanel("message"); }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                Message Patient
+              </button>
+              <button type="button" style={{ width: "100%", padding: 13, borderRadius: 14, border: "1.5px solid var(--doc-lt3)", background: "var(--doc-white)", fontFamily: "var(--doc-font)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 15, fontWeight: 700, color: "var(--doc-d2)", marginBottom: 14 }} onClick={() => setActivePanel("observe")}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--doc-d3)" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Record Observation
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* History tab — tiered visual hierarchy */
+        <div className="detail-tab-body">
+          {!patient.history || patient.history.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "48px 0", color: "var(--doc-d3)", fontSize: 16 }}>No activity yet.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {patient.history.map((e, i) => {
+                const tp = e.type;
+
+                if (tp === "pt_scan") {
+                  const m = e.text?.match(/(\d+)\s*[→—>]\s*(\d+)/);
+                  const scoreTo = m ? parseInt(m[2]) : patient.score;
+                  const scoreFrom = m ? parseInt(m[1]) : null;
+                  const delta = scoreFrom !== null ? scoreFrom - scoreTo : null;
+                  const sCol = sColDr(scoreTo);
+                  const isExpanded = expandedScans.has(i);
+                  return (
+                    <div key={i} style={{ background: "linear-gradient(160deg,#0F1F38,#162D50)", borderRadius: 16, padding: 18 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                        <DrRing score={scoreTo} size={52} numSize={14} dark />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".06em", color: "rgba(255,255,255,.68)", textTransform: "uppercase" }}>Scan uploaded</span>
+                            {delta !== null && delta > 0 ? <span style={{ padding: "2px 8px", borderRadius: 8, background: "rgba(92,184,130,.15)", fontSize: 12, fontWeight: 800, color: "var(--doc-green)" }}>↓{delta} pts</span> : null}
+                            {delta !== null && delta < 0 ? <span style={{ padding: "2px 8px", borderRadius: 8, background: "rgba(212,32,32,.15)", fontSize: 12, fontWeight: 800, color: "var(--doc-red)" }}>↑{Math.abs(delta)} pts</span> : null}
+                          </div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: "rgba(255,255,255,.85)" }}>{e.text}</div>
+                          <div style={{ fontSize: 12, color: "rgba(255,255,255,.55)", marginTop: 3 }}>{e.lab || "Lab result"} · {e.date}</div>
+                        </div>
+                      </div>
+                      {e.mk ? (
+                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,.06)" }}>
+                          <button type="button" onClick={() => toggleScanMarkers(i)} style={{ background: "none", border: "none", fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,.62)", fontFamily: "var(--doc-font)", cursor: "pointer", padding: 0 }}>
+                            {isExpanded ? "Hide markers ↑" : "View markers →"}
+                          </button>
+                          {isExpanded ? (
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 10 }}>
+                              {Object.entries(e.mk).map(([mk, val]) => (
+                                <div key={mk} style={{ padding: "8px 10px", borderRadius: 8, background: "rgba(255,255,255,.04)" }}>
+                                  <div style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,.55)", letterSpacing: ".06em", textTransform: "uppercase" }}>{MK_NAMES[mk] || mk}</div>
+                                  <div style={{ fontSize: 16, fontWeight: 800, color: "rgba(255,255,255,.85)", marginTop: 2 }}>{val}</div>
+                                  <div style={{ fontSize: 10, color: "rgba(255,255,255,.75)" }}>{MK_UNITS[mk] || ""}</div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                }
+
+                if (tp === "pt_enroll" || tp === "pt_upgrade") {
+                  const milCol = tp === "pt_upgrade" ? "var(--doc-green)" : "var(--doc-blue)";
+                  const milBg = tp === "pt_upgrade" ? "rgba(92,184,130,.06)" : "rgba(59,130,200,.06)";
+                  return (
+                    <div key={i} style={{ background: milBg, border: `1px solid ${milCol}20`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: `${milCol}12`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        {tp === "pt_upgrade"
+                          ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={milCol} strokeWidth="2"><polyline points="18 15 12 9 6 15"/></svg>
+                          : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={milCol} strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                        }
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--doc-d1)" }}>{e.text}</div>
+                        <div style={{ fontSize: 12, color: "var(--doc-d4)", marginTop: 2 }}>{e.date}</div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (tp === "pt_symptom") {
+                  return (
+                    <div key={i} style={{ background: "#FFFBF0", border: "1px solid rgba(232,178,48,.15)", borderRadius: 14, padding: "14px 16px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                        <div style={{ width: 20, height: 20, borderRadius: 8, background: "rgba(232,178,48,.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--doc-gold)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", color: "var(--doc-gold)", textTransform: "uppercase" }}>Patient</span>
+                        <span style={{ fontSize: 11, color: "var(--doc-d4)", marginLeft: "auto" }}>{e.date}</span>
+                      </div>
+                      <span style={{ fontSize: 15, color: "var(--doc-d1)", lineHeight: 1.5, fontStyle: "italic" }}>"{e.text}"</span>
+                    </div>
+                  );
+                }
+
+                if (tp === "note") {
+                  return (
+                    <div key={i} style={{ background: "rgba(92,184,130,.04)", border: "1px solid rgba(92,184,130,.12)", borderRadius: 14, padding: "14px 16px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                        <div style={{ width: 20, height: 20, borderRadius: 8, background: "rgba(92,184,130,.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--doc-green)" strokeWidth="2.5"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", color: "var(--doc-green)", textTransform: "uppercase" }}>Sent to patient</span>
+                        <span style={{ fontSize: 11, color: "var(--doc-d4)", marginLeft: "auto" }}>{e.date}</span>
+                      </div>
+                      <div style={{ fontSize: 15, color: "var(--doc-d1)", lineHeight: 1.5 }}>{e.text}</div>
+                    </div>
+                  );
+                }
+
+                if (tp === "approval") {
+                  return (
+                    <div key={i} style={{ background: "rgba(92,184,130,.04)", border: "1px solid rgba(92,184,130,.12)", borderRadius: 14, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(92,184,130,.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--doc-green)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--doc-d1)" }}>Protocol {e.label || "Approved"}</div>
+                        <div style={{ fontSize: 12, color: "var(--doc-d4)" }}>{e.by} · {e.date}</div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (tp === "obs") {
+                  return (
+                    <div key={i} style={{ display: "flex", gap: 10, padding: "10px 14px", borderRadius: 12, background: "var(--doc-lt)" }}>
+                      <div style={{ width: 18, height: 18, borderRadius: 8, background: "rgba(59,130,200,.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--doc-blue)" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, color: "var(--doc-d2)", lineHeight: 1.5 }}>{e.text}</div>
+                        <div style={{ fontSize: 11, color: "var(--doc-d4)", marginTop: 2 }}>Clinical note · {e.date}</div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (tp === "pt_inactive") {
+                  return (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px" }}>
+                      <div style={{ width: 14, height: 14, flexShrink: 0, opacity: 0.5 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--doc-orange)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg>
+                      </div>
+                      <div style={{ fontSize: 13, color: "var(--doc-d3)" }}><span style={{ fontWeight: 600 }}>Patient inactive</span> · {e.date}</div>
+                    </div>
+                  );
+                }
+
+                // Utility / reminder / msg_sent
+                return (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px" }}>
+                    <div style={{ width: 14, height: 14, flexShrink: 0, opacity: 0.5 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--doc-d3)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    </div>
+                    <div style={{ fontSize: 13, color: "var(--doc-d3)" }}><span style={{ fontWeight: 600 }}>{tp === "reminder" ? "Reminder sent" : tp === "msg_sent" ? "Message sent" : tp}</span> · {e.date}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
-      <div className="detail-sticky-action">
-        <button
-          type="button"
-          style={{ width: "100%", minHeight: 52, border: `1px solid ${action.color}33`, borderRadius: 14, background: "transparent", color: action.color, fontSize: 16, fontWeight: 850, fontFamily: "var(--doc-font)", cursor: "pointer" }}
-        >
-          {action.label}
-        </button>
-      </div>
+      {/* Sticky action */}
+      {activePanel === null ? (
+        <div className="detail-sticky-action">
+          <button
+            type="button"
+            style={{
+              width: "100%",
+              padding: 14,
+              borderRadius: 14,
+              border: stickyGhost ? "1.5px solid var(--doc-lt3)" : "none",
+              background: stickyGhost ? "var(--doc-white)" : stickyBg,
+              color: stickyGhost ? "var(--doc-d2)" : "#fff",
+              fontSize: 15,
+              fontWeight: 700,
+              fontFamily: "var(--doc-font)",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              transition: "transform .1s",
+              minHeight: 52,
+            }}
+            onClick={() => {
+              if (isHighRisk) onApprove("approve");
+              else if (stickyGhost) onTabChange("history");
+              else setActivePanel("message");
+            }}
+          >
+            {stickyLabel}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
