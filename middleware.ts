@@ -9,10 +9,17 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // If Supabase env vars are missing, skip session refresh instead of
+  // crashing the middleware (which would 500 every request).
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return response;
+  }
+
+  try {
+    const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -23,11 +30,13 @@ export async function middleware(request: NextRequest) {
           );
         },
       },
-    }
-  );
+    });
 
-  // This refreshes a user's session in the database if needed
-  await supabase.auth.getUser();
+    // This refreshes a user's session in the database if needed
+    await supabase.auth.getUser();
+  } catch (error) {
+    console.error("Middleware session refresh failed:", error);
+  }
 
   return response;
 }
