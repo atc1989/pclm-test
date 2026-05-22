@@ -1,4 +1,3 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "./app/lib/supabase/types";
 
@@ -9,16 +8,21 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  // If Supabase env vars are missing, skip session refresh instead of
-  // crashing the middleware (which would 500 every request).
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return response;
-  }
-
   try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    // If Supabase env vars are missing, skip session refresh instead of
+    // crashing the middleware (which would 500 every request).
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return response;
+    }
+
+    // Imported dynamically so a load-time failure in @supabase/ssr is
+    // caught here rather than crashing the whole middleware module
+    // (MIDDLEWARE_INVOCATION_FAILED).
+    const { createServerClient } = await import("@supabase/ssr");
+
     const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
       cookies: {
         getAll() {
