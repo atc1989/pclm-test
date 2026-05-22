@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function PatientSignIn() {
+function PatientSignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/patient/dashboard";
@@ -137,5 +137,13 @@ export default function PatientSignIn() {
 
       <div style={{ textAlign: "center", padding: "0 28px 24px", fontSize: "clamp(18px,5vw,20px)", color: "rgba(255,255,255,.70)" }}>GutGuard Protocol · For Filing</div>
     </div>
+  );
+}
+
+export default function PatientSignIn() {
+  return (
+    <Suspense fallback={null}>
+      <PatientSignInContent />
+    </Suspense>
   );
 }

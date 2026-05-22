@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const ALL_MARKERS = ["hs-CRP", "WBC", "Neutrophils", "Lymphocytes", "Fasting Glucose", "Triglycerides", "HDL Cholesterol", "ALT"];
@@ -48,7 +48,7 @@ function ordinal(n: number) {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
-export default function UploadPage() {
+function UploadContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isDemo = searchParams.get("demo") === "true";
@@ -422,5 +422,13 @@ export default function UploadPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function UploadPage() {
+  return (
+    <Suspense fallback={null}>
+      <UploadContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TIERS, type TierKey } from "@/lib/glis/score";
 
@@ -13,7 +13,7 @@ const PAY_LABELS: Record<PayMethod, string> = {
   cod: "Cash on Delivery",
 };
 
-export default function OrderPage() {
+function OrderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [tierKey, setTierKey] = useState<TierKey | null>(null);
@@ -217,5 +217,13 @@ export default function OrderPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function OrderPage() {
+  return (
+    <Suspense fallback={null}>
+      <OrderContent />
+    </Suspense>
   );
 }
