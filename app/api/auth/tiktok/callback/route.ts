@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -54,8 +54,31 @@ type TikTokProfile = {
   display_name?: string;
 };
 
+type SocialIdentityRow = {
+  id: string;
+  user_id: string | null;
+};
+
 function isSupabaseOpaqueKey(key: string) {
   return key.startsWith("sb_publishable_") || key.startsWith("sb_secret_");
+}
+
+function serviceRoleHeaders(extra: Record<string, string> = {}) {
+  if (!SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY.");
+  }
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    apikey: SUPABASE_SERVICE_ROLE_KEY,
+    ...extra,
+  };
+
+  if (!isSupabaseOpaqueKey(SUPABASE_SERVICE_ROLE_KEY)) {
+    headers.Authorization = `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
+  }
+
+  return headers;
 }
 
 function getRedirectUrl(origin: string, path: string) {
@@ -80,6 +103,12 @@ function getExpiryIso(expiresInSeconds: number | undefined) {
   }
 
   return new Date(Date.now() + expiresInSeconds * 1000).toISOString();
+}
+
+function syntheticEmailFor(openId: string) {
+  // .invalid is reserved by RFC 2606, guaranteed never-routable — no email
+  // is ever sent because we call createUser with email_confirm: true.
+  return `tiktok-${openId.toLowerCase()}@social.gutguard.invalid`;
 }
 
 async function exchangeCodeForToken(code: string) {
@@ -122,9 +151,7 @@ async function fetchTikTokProfile(accessToken: string) {
   );
 
   const response = await fetch(profileUrl, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: { Authorization: `Bearer ${accessToken}` },
     cache: "no-store",
   });
 
@@ -135,71 +162,81 @@ async function fetchTikTokProfile(accessToken: string) {
     throw new Error(payload?.error?.message || "TikTok profile fetch failed.");
   }
 
-  return user;
+  return user as TikTokProfile & { open_id: string };
 }
 
-async function storeSocialIdentity(params: {
-  accessToken: string;
+async function findExistingIdentity(openId: string): Promise<SocialIdentityRow | null> {
+  if (!SUPABASE_URL) throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL.");
+
+  const url = `${SUPABASE_URL}/rest/v1/social_identities?provider=eq.tiktok&provider_user_id=eq.${encodeURIComponent(openId)}&select=id,user_id&order=user_id.desc.nullslast&limit=1`;
+  const response = await fetch(url, { headers: serviceRoleHeaders(), cache: "no-store" });
+
+  if (!response.ok) {
+    // social_identities may not exist yet (migration not run) — surface clear error
+    throw new Error(`social_identities lookup failed: ${await response.text()}`);
+  }
+
+  const rows = (await response.json().catch(() => [])) as SocialIdentityRow[];
+  return rows[0] ?? null;
+}
+
+async function upsertIdentity(params: {
+  existing: SocialIdentityRow | null;
+  userId: string;
   profile: TikTokProfile;
-  refreshToken: string | undefined;
+  token: TikTokTokenResponse;
   request: NextRequest;
-  scope: string | undefined;
-  tokenExpiresIn: number | undefined;
-  refreshTokenExpiresIn: number | undefined;
-  supabaseUserId: string | null;
 }) {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error("Missing Supabase environment variables.");
-  }
+  if (!SUPABASE_URL) throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL.");
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    apikey: SUPABASE_SERVICE_ROLE_KEY,
-    Prefer: "return=representation",
-  };
+  const { existing, userId, profile, token, request } = params;
 
-  if (!isSupabaseOpaqueKey(SUPABASE_SERVICE_ROLE_KEY)) {
-    headers.Authorization = `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
-  }
-
-  const identityRecord = {
-    user_id: params.supabaseUserId,
+  const record = {
+    user_id: userId,
     provider: "tiktok",
-    provider_user_id: params.profile?.open_id ?? null,
-    provider_union_id: params.profile?.union_id ?? null,
-    provider_display_name: params.profile?.display_name ?? null,
+    provider_user_id: profile.open_id ?? null,
+    provider_union_id: profile.union_id ?? null,
+    provider_display_name: profile.display_name ?? null,
     avatar_url:
-      params.profile?.avatar_large_url ??
-      params.profile?.avatar_url_100 ??
-      params.profile?.avatar_url ??
-      null,
-    access_token: params.accessToken,
-    refresh_token: params.refreshToken ?? null,
-    scope: params.scope ?? null,
-    token_expires_at: getExpiryIso(params.tokenExpiresIn),
-    refresh_token_expires_at: getExpiryIso(params.refreshTokenExpiresIn),
-    profile_data: params.profile ?? {},
+      profile.avatar_large_url ?? profile.avatar_url_100 ?? profile.avatar_url ?? null,
+    access_token: token.access_token,
+    refresh_token: token.refresh_token ?? null,
+    scope: token.scope ?? null,
+    token_expires_at: getExpiryIso(token.expires_in),
+    refresh_token_expires_at: getExpiryIso(token.refresh_expires_in),
+    profile_data: profile ?? {},
     metadata: {
       linked_from: "tiktok_oauth_callback",
-      user_agent: params.request.headers.get("user-agent"),
+      user_agent: request.headers.get("user-agent"),
+      updated_via: existing ? "update" : "insert",
     },
+    updated_at: new Date().toISOString(),
   };
+
+  if (existing) {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/social_identities?id=eq.${existing.id}`,
+      {
+        method: "PATCH",
+        headers: serviceRoleHeaders({ Prefer: "return=minimal" }),
+        body: JSON.stringify(record),
+        cache: "no-store",
+      },
+    );
+    if (!response.ok) throw new Error(await response.text());
+    return existing.id;
+  }
 
   const response = await fetch(`${SUPABASE_URL}/rest/v1/social_identities`, {
     method: "POST",
-    headers,
-    body: JSON.stringify(identityRecord),
+    headers: serviceRoleHeaders({ Prefer: "return=representation" }),
+    body: JSON.stringify(record),
     cache: "no-store",
   });
+  if (!response.ok) throw new Error(await response.text());
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || "Failed to store social identity.");
-  }
-
-  const [savedIdentity] = (await response.json().catch(() => [])) as Array<{ id?: string }>;
-
-  return savedIdentity?.id ?? null;
+  const [row] = (await response.json().catch(() => [])) as Array<{ id?: string }>;
+  return row?.id ?? null;
 }
 
 export async function GET(request: NextRequest) {
@@ -225,42 +262,73 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // 1. Exchange TikTok code for tokens + profile
     const token = await exchangeCodeForToken(code);
     const profile = await fetchTikTokProfile(token.access_token);
-    const supabase = await createClient();
-    const { data: userData } = await supabase.auth.getUser();
-    const savedIdentityId = await storeSocialIdentity({
-      accessToken: token.access_token,
-      profile,
-      refreshToken: token.refresh_token,
-      request,
-      scope: token.scope,
-      tokenExpiresIn: token.expires_in,
-      refreshTokenExpiresIn: token.refresh_expires_in,
-      supabaseUserId: userData.user?.id ?? null,
-    });
+    const openId = profile.open_id;
+    const email = syntheticEmailFor(openId);
+    const displayName = profile.display_name ?? null;
+    const avatarUrl =
+      profile.avatar_large_url ?? profile.avatar_url_100 ?? profile.avatar_url ?? null;
 
-    const response = userData.user
-      ? NextResponse.redirect(getRedirectUrl(requestUrl.origin, SIGNED_IN_PATH))
-      : NextResponse.redirect(
-          getRedirectUrl(requestUrl.origin, `${SIGN_IN_PATH}?provider=tiktok`),
-        );
+    // 2. Look up any existing linked identity
+    const existing = await findExistingIdentity(openId);
+    let userId = existing?.user_id ?? null;
 
-    clearStateCookie(response);
+    const admin = await createAdminClient();
 
-    if (!userData.user && savedIdentityId) {
-      response.cookies.set({
-        name: "tiktok_link_identity",
-        value: savedIdentityId,
-        httpOnly: true,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
+    // 3. Create a Supabase user if this TikTok account hasn't been linked yet
+    if (!userId) {
+      const { data: created, error: createErr } = await admin.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        user_metadata: {
+          role: "patient",
+          full_name: displayName,
+          avatar_url: avatarUrl,
+          provider: "tiktok",
+          tiktok_open_id: openId,
+          tiktok_display_name: displayName,
+        },
       });
+
+      if (createErr || !created?.user) {
+        throw new Error(createErr?.message ?? "Failed to create Supabase user for TikTok login.");
+      }
+
+      userId = created.user.id;
     }
 
+    // 4. Upsert the social_identities row so tokens are refreshed every sign-in
+    await upsertIdentity({ existing, userId, profile, token, request });
+
+    // 5. Issue a Supabase session: generate a magic-link via admin, verify it
+    //    server-side so the SSR cookie adapter writes the session cookies.
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+    });
+
+    const hashedToken = linkData?.properties?.hashed_token;
+    if (linkErr || !hashedToken) {
+      throw new Error(linkErr?.message ?? "Failed to generate sign-in token.");
+    }
+
+    const supabase = await createClient();
+    const { error: verifyErr } = await supabase.auth.verifyOtp({
+      token_hash: hashedToken,
+      type: "magiclink",
+    });
+    if (verifyErr) {
+      throw new Error(verifyErr.message);
+    }
+
+    // 6. Done. Session cookies are set on the response by the SSR adapter.
+    const response = NextResponse.redirect(getRedirectUrl(requestUrl.origin, SIGNED_IN_PATH));
+    clearStateCookie(response);
     return response;
-  } catch {
+  } catch (error) {
+    console.error("TikTok callback failed:", error);
     const response = NextResponse.redirect(
       getRedirectUrl(requestUrl.origin, `${SIGN_IN_PATH}?error=tiktok_callback_failed`),
     );
