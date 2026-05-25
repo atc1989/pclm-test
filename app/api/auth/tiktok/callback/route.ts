@@ -285,6 +285,10 @@ export async function GET(request: NextRequest) {
         user_metadata: {
           role: "patient",
           full_name: displayName,
+          // The on_auth_user_created trigger reads `display_name` directly
+          // and uses it when seeding the profiles row, so set it explicitly
+          // (otherwise the patient dashboard shows a blank greeting).
+          display_name: displayName,
           avatar_url: avatarUrl,
           provider: "tiktok",
           tiktok_open_id: openId,
