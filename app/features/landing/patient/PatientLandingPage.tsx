@@ -302,9 +302,9 @@ export function PatientLandingPage() {
               <div className="proto-card rv d2">
                 <div className="proto-name">Start</div>
                 <div className="proto-caps">40 capsules · 4 bottles · 1 BioScan</div>
-                <div className="proto-cap-price">₱115</div>
+                <div className="proto-cap-price">₱125</div>
                 <div className="proto-cap-label">per capsule</div>
-                <div className="proto-price">₱4,900 total · 40 caps</div>
+                <div className="proto-price">₱4,999 total · 40 caps</div>
                 <div className="proto-scans">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                   1 BioScan review included
@@ -316,9 +316,9 @@ export function PatientLandingPage() {
                 <div className="proto-rec-badge">Most chosen</div>
                 <div className="proto-name">Grow</div>
                 <div className="proto-caps">120 capsules · 12 bottles · 3 BioScans</div>
-                <div className="proto-cap-price">₱103</div>
+                <div className="proto-cap-price">₱117</div>
                 <div className="proto-cap-label">per capsule</div>
-                <div className="proto-price">₱13,000 total · 120 caps</div>
+                <div className="proto-price">₱13,999 total · 120 caps</div>
                 <div className="proto-scans">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                   3 BioScan reviews · Day 0, 45, 90
@@ -327,16 +327,16 @@ export function PatientLandingPage() {
               </div>
         
               <div className="proto-card rv d4">
-                <div className="proto-name">Power</div>
+                <div className="proto-name">Peak</div>
                 <div className="proto-caps">400 capsules · 40 bottles · 3 BioScans</div>
-                <div className="proto-cap-price">₱87</div>
+                <div className="proto-cap-price">₱100</div>
                 <div className="proto-cap-label">per capsule</div>
-                <div className="proto-price">₱39,000 total · 400 caps</div>
+                <div className="proto-price">₱39,999 total · 400 caps</div>
                 <div className="proto-scans">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                   3 BioScan reviews · full-cycle supply
                 </div>
-                <a href="https://www.tiktok.com/view/product/1735691058658576096?encode_params=MIIBpgQMrB_SQROzosUZKsuhBIIBgsyscgTJ0mPqIxhoFlw8UMkKGz1y6UVkfFJ3w0SwJWS060qNslbIkTMmYOV6RclFyisE1hhz7v6_yuRt-s__tTXYjEdpNdkMDuO2Xy0zoM2iFGcgk-KJDT49tK6xCNh6csDFn0TDgXe8LmZ4epmeus-Olo_aMA2Tul56BPGTNUoKBKSKH1CTDVQcjB9lg4_NDH6vhSb2C-WrIka66iPxhD8OpSWdn8oZqPAUJguDBSqokgELM2tcdcxtxDLtzQGih_qKOyNDNXPYPsuJn67UxIioJfrir7kpUDyezaW8RkOHDCkTyy1luQXs69B3xTkJEvQCUY8dr-7TheCudPJsF7E4BOEVg1n23-UuvQ4Rftb_S0fyPhnooDE7OAPsRZDtAx5WSigeSEwqxt1FEwy5_CtkT72nhDKnF-HxDchgG7SY2vwgQY--pYvmzI8QcRnjVVC-SOmVzM4axlhCnAnzAKKMqPmBjGwZmr6GRnVDgWrt36krNq125pvPp2G-8F85lrPuBBBdQjsJZ1xOR-oq46mDXRsR&region=PH&locale=en&source=seller_center&hide_tips=&no-cache=1&e=1" className="proto-cta" target="_blank" rel="noreferrer noopener">Start Power →</a>
+                <a href="https://www.tiktok.com/view/product/1735691058658576096?encode_params=MIIBpgQMrB_SQROzosUZKsuhBIIBgsyscgTJ0mPqIxhoFlw8UMkKGz1y6UVkfFJ3w0SwJWS060qNslbIkTMmYOV6RclFyisE1hhz7v6_yuRt-s__tTXYjEdpNdkMDuO2Xy0zoM2iFGcgk-KJDT49tK6xCNh6csDFn0TDgXe8LmZ4epmeus-Olo_aMA2Tul56BPGTNUoKBKSKH1CTDVQcjB9lg4_NDH6vhSb2C-WrIka66iPxhD8OpSWdn8oZqPAUJguDBSqokgELM2tcdcxtxDLtzQGih_qKOyNDNXPYPsuJn67UxIioJfrir7kpUDyezaW8RkOHDCkTyy1luQXs69B3xTkJEvQCUY8dr-7TheCudPJsF7E4BOEVg1n23-UuvQ4Rftb_S0fyPhnooDE7OAPsRZDtAx5WSigeSEwqxt1FEwy5_CtkT72nhDKnF-HxDchgG7SY2vwgQY--pYvmzI8QcRnjVVC-SOmVzM4axlhCnAnzAKKMqPmBjGwZmr6GRnVDgWrt36krNq125pvPp2G-8F85lrPuBBBdQjsJZ1xOR-oq46mDXRsR&region=PH&locale=en&source=seller_center&hide_tips=&no-cache=1&e=1" className="proto-cta" target="_blank" rel="noreferrer noopener">Start Peak →</a>
               </div>
         
             </div>
@@ -520,7 +520,7 @@ export function PatientLandingPage() {
         <div id="sticky">
           <div className="sk-l">
             <div className="sk-title">GutGuard Protocol</div>
-            <div className="sk-sub">Trial ₱1,299 · Grow ₱13,000 · Physician-reviewed</div>
+            <div className="sk-sub">Trial ₱1,299 · Grow ₱13,999 · Physician-reviewed</div>
           </div>
           <a href="/patient" className="sk-btn">Start My BioScan →</a>
         </div>
