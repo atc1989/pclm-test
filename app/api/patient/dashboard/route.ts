@@ -5,7 +5,7 @@ const DB_TO_TIER: Record<string, string> = {
   maintenance: "trial",
   start: "start",
   grow: "grow",
-  power: "power",
+  power: "peak",
 };
 
 export async function GET() {

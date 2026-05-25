@@ -6,7 +6,7 @@ const TIER_TO_DB: Record<string, string> = {
   trial: "maintenance",
   start: "start",
   grow: "grow",
-  power: "power",
+  peak: "power",
 };
 
 export async function POST(request: NextRequest) {

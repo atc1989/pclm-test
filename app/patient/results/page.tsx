@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { scoreColor, scoreBand, scoreSummary, suggestTier, TIERS, type ScoreResult, type TierKey } from "@/lib/glis/score";
+import { scoreColor, scoreBand, scoreSummary, suggestTier, TIERS, TIER_TIKTOK_URLS, type ScoreResult, type TierKey } from "@/lib/glis/score";
 
-const TIER_ORDER: TierKey[] = ["trial", "start", "grow", "power"];
+const TIER_ORDER: TierKey[] = ["trial", "start", "grow", "peak"];
 
 type ScanEntry = { score: number; date: string; interpretation: string };
 
@@ -73,6 +73,7 @@ export default function ResultsPage() {
 
   async function handleOrder() {
     if (!sr) return;
+    window.open(TIER_TIKTOK_URLS[selected], "_blank", "noopener,noreferrer");
     const scoreId = await saveScanToDb(false);
     const params = new URLSearchParams({ tier: selected });
     if (scoreId) params.set("sid", scoreId);
